@@ -1,0 +1,23 @@
+{
+  "name": "actstore",
+  "version": "0.0.0",
+  "description": "",
+  "main": "/store/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "watch": "babel --presets es2015,stage-0,react --watch src/ --out-dir ./"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "babel-cli": "^6.26.0",
+    "babel-preset-es2015": "^6.24.1",
+    "babel-preset-react": "^6.24.1",
+    "babel-preset-stage-0": "^6.24.1"
+  },
+  "dependencies": {
+    "fetchier": "0.0.21",
+    "js-cookie": "^2.2.0"
+  }
+}
