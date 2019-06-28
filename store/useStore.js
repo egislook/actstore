@@ -12,29 +12,29 @@ var _jsCookie = require('js-cookie');
 
 var _jsCookie2 = _interopRequireDefault(_jsCookie);
 
+var _react = require('react');
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
 
 var defaultStatus = { loading: null, info: null, confirm: null, update: null };
 
-exports.default = function (react, props, _ref) {
+exports.default = function (props, _ref) {
   var act = _ref.act,
       action = _ref.action,
       useActions = _ref.useActions;
-  var useState = react.useState,
-      useEffect = react.useEffect;
   var router = props.router,
       init = props.init,
       actions = props.actions,
       config = props.config;
 
-  var _useState = useState(_extends({}, defaultStatus, { loading: true })),
+  var _useState = (0, _react.useState)(_extends({}, defaultStatus, { loading: true })),
       _useState2 = _slicedToArray(_useState, 2),
       status = _useState2[0],
       setGlobalStatus = _useState2[1];
 
-  var _useState3 = useState({ token: _jsCookie2.default.get('token') }),
+  var _useState3 = (0, _react.useState)({ token: _jsCookie2.default.get('token') }),
       _useState4 = _slicedToArray(_useState3, 2),
       global = _useState4[0],
       setGlobalStore = _useState4[1];
@@ -68,7 +68,7 @@ exports.default = function (react, props, _ref) {
   store.act = act.bind(store);
   store.action = action.bind(store);
 
-  useEffect(function () {
+  (0, _react.useEffect)(function () {
     store.act('APP_INIT');
   }, [_jsCookie2.default.get('token')]);
 

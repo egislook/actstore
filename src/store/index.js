@@ -2,134 +2,129 @@ import fetchier, { GET, POST, PUT, GQL, WS } from 'fetchier';
 import Cookies from 'js-cookie';
 import useStore from './useStore';
 // import queries from '../data/graphqlQueries';
-
-console.log(require.resolve('react'));
-
-
-// import react, { createContext, useState, useEffect, useContext } from 'react';
+import react from 'react';
 
 let context;
 
-export default (react) => {
-  const { createContext, useContext, useState, useEffect } = react;
-  context = context || createContext(null);
-  const defaultStatus = { loading: null, info: null, confirm: null, update: null };
+const { createContext, useContext, useState, useEffect } = react;
+context = context || createContext(null);
+
+export function GlobalProvider(props){
+  const { children } = props;
+  const value = useStore(props, { act, useActions, action });
+  // return <context.Provider value={value} children={children} />
+  return react.createElement(context.Provider, { children, value });
+}
+
+GlobalProvider.context = context;
+
+
+export default {
+  // act,
+  getRequestPromise,
+  GlobalProvider,
+  useActions,
+  useGlobal,
+  // action
+}
+
+// Hooks
+
+export function useActions(fn, globalContext){
+  const state = globalContext || useContext(context) || {};
+  const actions = fn(state);
   
-  GlobalProvider.context = context;
-  
-  return {
-    // act,
-    getRequestPromise,
-    GlobalProvider,
-    useActions,
-    useGlobal,
-    // action
-  }
-  
-  function GlobalProvider(props){
-    const { children } = props;
-    const value = useStore(react, props, { act, useActions, action });
-    return react.createElement(context.Provider, { children, value });
-  }
-  
-  // Hooks
-  
-  function useActions(fn, globalContext){
-    const state = globalContext || useContext(context) || {};
-    const actions = fn(state);
+  if(!GlobalProvider.actions)
+    GlobalProvider.actions = {};
     
-    if(!GlobalProvider.actions)
-      GlobalProvider.actions = {};
-      
-    const firstActionName = Object.keys(actions).shift();
-    if(GlobalProvider.actions[firstActionName])
-      return state;
-      
-    for(let actionName in actions){
-      GlobalProvider.actions[actionName] = actions[actionName].bind(state.set);
-    }
-    
+  const firstActionName = Object.keys(actions).shift();
+  if(GlobalProvider.actions[firstActionName])
     return state;
+    
+  for(let actionName in actions){
+    GlobalProvider.actions[actionName] = actions[actionName].bind(state.set);
   }
   
-  function useGlobal(cfg = {}){
-    const { actions } = cfg;
-    const globalContext = useContext(context);
+  return state;
+}
+
+export function useGlobal(cfg = {}){
+  const { actions } = cfg;
+  const globalContext = useContext(context);
+  
+  if(actions) useActions(actions, globalContext);
+  return globalContext;
+}
+
+// triggers
+
+export function act(){
+  const args = [...arguments];
+  const actionName = args.shift();
+  const actions = GlobalProvider.actions;
+  
+  const handleError = (error) => {
+    console.warn(error);
+    return this && this.handle && this.handle.info(error);
+  }
     
-    if(actions) useActions(actions, globalContext);
-    return globalContext;
+  if(typeof actionName === 'function')
+    return actionName.apply(this, arguments);
+  
+  if(typeof actionName === 'string'){
+    const actFunction = actions[actionName] ? actions[actionName].bind(this)(...args) : getRequestPromise.apply(this, arguments);
+    return typeof actFunction === 'object' ? actFunction.catch(handleError) : Promise.resolve(actFunction);
+  }
+    
+  if(Array.isArray(actionName))
+    return Promise.all(actionName.map(request => 
+      typeof request === 'string' 
+        ? act.bind(this)(request) 
+        : typeof request === 'object' ? getRequestPromise.bind(this)(null, request) : request
+      )
+    ).catch(handleError)
+    
+  return handleError(actionName + ' action is missing correct actionName as first parameter')
+}
+
+export function action(actionName){
+  const actions = GlobalProvider.actions;
+  
+  if(typeof actionName !== 'string' || !actions[actionName])
+    return Promise.reject(actionName + ' action can not be found');
+  
+  return function(){ return actions[actionName].apply(this, arguments) }
+}
+
+export function getRequestPromise(actionName, request){
+  let { method, endpoint, path, req } = request || {};
+  const { GQL_URL, WSS_URL, endpoints } = this.config || {};
+  req = {
+    method: actionName || req && req.method || method || 'GET',
+    endpoint: req && req.endpoint || endpoint,
+    path: req && req.path || path || '',
+    ...(req || request)
   }
   
-  // triggers
+  const token = Cookies.get('token');
   
-  function act(){
-    const args = [...arguments];
-    const actionName = args.shift();
-    const actions = GlobalProvider.actions;
-    
-    const handleError = (error) => {
-      console.warn(error);
-      return this && this.handle && this.handle.info(error);
-    }
-      
-    if(typeof actionName === 'function')
-      return actionName.apply(this, arguments);
-    
-    if(typeof actionName === 'string'){
-      const actFunction = actions[actionName] ? actions[actionName].bind(this)(...args) : getRequestPromise.apply(this, arguments);
-      return typeof actFunction === 'object' ? actFunction.catch(handleError) : Promise.resolve(actFunction);
-    }
-      
-    if(Array.isArray(actionName))
-      return Promise.all(actionName.map(request => 
-        typeof request === 'string' 
-          ? act.bind(this)(request) 
-          : typeof request === 'object' ? getRequestPromise.bind(this)(null, request) : request
-        )
-      ).catch(handleError)
-      
-    return handleError(actionName + ' action is missing correct actionName as first parameter')
+  switch(req.method){
+    case 'GQL':
+    case 'POST':
+    case 'GET':
+      const url = req.method === 'GQL' ? GQL_URL : endpoints[endpoint] + req.path;
+      return fetchier[req.method]({ url, token, ...req });
+    case 'OPEN':
+      return WS.OPEN({ url: WSS_URL, token, ...req });
+    case 'CLOSE':
+      return WS.CLOSE({ url: WSS_URL, ...req });
+    case 'PUT':
+      return PUT({ ...req });
+    case 'SUB':
+      return WS.SUB({ url: req.url || WSS_URL, subscription: req });
+    case 'UNSUB':
+      return WS.UNSUB({ url: WSS_URL, ...req });
   }
   
-  function action(actionName){
-    const actions = GlobalProvider.actions;
-    
-    if(typeof actionName !== 'string' || !actions[actionName])
-      return Promise.reject(actionName + ' action can not be found');
-    
-    return function(){ return actions[actionName].apply(this, arguments) }
-  }
-  
-  function getRequestPromise(actionName, request){
-    let { method, endpoint, path, req } = request || {};
-    const { GQL_URL, WSS_URL, endpoints } = this.config || {};
-    req = {
-      method: actionName || req && req.method || method || 'GET',
-      endpoint: req && req.endpoint || endpoint,
-      path: req && req.path || path || '',
-      ...(req || request)
-    }
-    
-    const token = Cookies.get('token');
-    
-    switch(req.method){
-      case 'GQL':
-      case 'POST':
-      case 'GET':
-        const url = req.method === 'GQL' ? GQL_URL : endpoints[endpoint] + req.path;
-        return fetchier[req.method]({ url, token, ...req });
-      case 'OPEN':
-        return WS.OPEN({ url: WSS_URL, token, ...req });
-      case 'CLOSE':
-        return WS.CLOSE({ url: WSS_URL, ...req });
-      case 'PUT':
-        return PUT({ ...req });
-      case 'SUB':
-        return WS.SUB({ url: req.url || WSS_URL, subscription: req });
-      case 'UNSUB':
-        return WS.UNSUB({ url: WSS_URL, ...req });
-    }
-    
-    return Promise.reject('Incorrect action ' + actionName);
-  }
-};
+  return Promise.reject('Incorrect action ' + actionName);
+}

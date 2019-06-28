@@ -1,10 +1,10 @@
 import Cookies from 'js-cookie';
+import { useState, useEffect } from 'react';
 
 const defaultStatus = { loading: null, info: null, confirm: null, update: null };
 
-export default (react, props, { act, action, useActions }) => {
+export default (props, { act, action, useActions }) => {
   
-  const { useState, useEffect } = react;
   const { router, init, actions, config } = props;
     
   const [status, setGlobalStatus] = useState({ ...defaultStatus, loading: true });
