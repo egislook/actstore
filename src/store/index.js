@@ -53,8 +53,6 @@ export default (react) => {
     const { actions } = cfg;
     const globalContext = useContext(context);
     
-    console.log('useGlobal');
-    
     if(actions) useActions(actions, globalContext);
     return globalContext;
   }
