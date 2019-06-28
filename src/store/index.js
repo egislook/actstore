@@ -3,6 +3,9 @@ import Cookies from 'js-cookie';
 import useStore from './useStore';
 // import queries from '../data/graphqlQueries';
 
+console.log(require.resolve('react'));
+
+
 // import react, { createContext, useState, useEffect, useContext } from 'react';
 
 let context;

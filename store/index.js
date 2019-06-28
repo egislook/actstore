@@ -26,6 +26,8 @@ function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr
 
 // import queries from '../data/graphqlQueries';
 
+console.log(require.resolve('react'));
+
 // import react, { createContext, useState, useEffect, useContext } from 'react';
 
 var context = void 0;
