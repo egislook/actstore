@@ -103,6 +103,8 @@ function act() {
   var actionName = args.shift();
   var actions = GlobalProvider.actions;
 
+  // console.log('[ACT]', actionName, args);
+
   var handleError = function handleError(error) {
     console.warn(error);
     return _this && _this.handle && _this.handle.info(error);
@@ -137,12 +139,15 @@ function getRequestPromise(actionName, request) {
       method = _ref.method,
       endpoint = _ref.endpoint,
       path = _ref.path,
-      req = _ref.req;
+      req = _ref.req,
+      query = _ref.query;
 
   var _ref2 = this.config || {},
       GQL_URL = _ref2.GQL_URL,
       WSS_URL = _ref2.WSS_URL,
       endpoints = _ref2.endpoints;
+
+  console.warn(actionName, endpoint || query && query.replace(/[\n\t]/gm, '').trim().substr(0, 50) || '');
 
   req = _extends({
     method: actionName || req && req.method || method || 'GET',

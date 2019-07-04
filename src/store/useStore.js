@@ -1,4 +1,4 @@
-import Cookies from 'js-cookie';
+import cookies from 'js-cookie';
 import { useState, useEffect } from 'react';
 
 const defaultStatus = { loading: null, info: null, confirm: null, update: null };
@@ -7,37 +7,39 @@ export default (props, { act, action, useActions }) => {
   
   const { router, init, actions, config } = props;
     
-  const [status, setGlobalStatus] = useState({ ...defaultStatus, loading: true });
-  let [global, setGlobalStore] = useState({ token: Cookies.get('token') });
+  const [status, setGlobalStatus] = useState({ ...defaultStatus, loading: typeof window !== 'object' });
+  let [global, setGlobalStore] = useState({ token: cookies.get('token') });
   
   const handlers = {
     loading: setLoading,
     info: handleInfo,
     clear: handleClear,
     confirm: handleConfirm,
+    set: setGlobalHandler
   };
   
   const store = {
     config,
     ...props,
     children: null,
-    status, 
-    ...global,
+    status,
     handle: handlers,
     store: {
+      ...global,
       get: getGlobal,
       set: setGlobal
     },
     route: {
       get: (str) => str ? router.asPath.includes(str) : router.asPath,
       set: setRoute
-    }
+    },
+    cookies,
   }
   
   store.act = act.bind(store); 
   store.action = action.bind(store);
   
-  useEffect(() => { store.act('APP_INIT') }, [Cookies.get('token')]);
+  useEffect(() => { store.act('APP_INIT') }, [cookies.get('token')]);
   
   useActions(actions, store);
   
@@ -65,13 +67,23 @@ export default (props, { act, action, useActions }) => {
       }
     } else global = {};
       
+    // console.log('GLOBAL', { data, global })
     setGlobalStore(!data ? {} : global);
     handleClear();
     return Promise.resolve(data);
   }
   
+  function setGlobalHandler(handler){
+    if(typeof handler !== 'object')
+      return;
+    const handlerName = Object.key(handler).shift();
+    handlers[handlerName] = handler[handlerName];
+    return Promise.resolve(handler);
+  }
+  
   function setLoading(loading){
-    status.loading !== loading && setGlobalStatus({ ...defaultStatus, loading })
+    const globalStatus = { ...defaultStatus, loading };
+    status.loading !== loading && setGlobalStatus(globalStatus);
   }
   
   function setRoute(name, disableRoute){
@@ -81,11 +93,11 @@ export default (props, { act, action, useActions }) => {
       if(disableRoute || router.asPath === (route.link || name ))
         return resolve(route)
       
-      router.events.on('routeChangeComplete', (url) => {
-        router.events.off('routeChangeComplete');
-        return resolve(url);
-      });
-      router.push(route.link, route.link, { shallow: true });
+      // router.events.on('routeChangeComplete', (url) => {
+      //   router.events.off('routeChangeComplete');
+      //   return resolve(url);
+      // });
+      return resolve(router.push(route.link, route.link, { shallow: true }));
     })
   }
   

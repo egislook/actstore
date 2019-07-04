@@ -4,6 +4,8 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
+
 var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
 
 var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
@@ -29,7 +31,7 @@ exports.default = function (props, _ref) {
       actions = props.actions,
       config = props.config;
 
-  var _useState = (0, _react.useState)(_extends({}, defaultStatus, { loading: true })),
+  var _useState = (0, _react.useState)(_extends({}, defaultStatus, { loading: (typeof window === 'undefined' ? 'undefined' : _typeof(window)) !== 'object' })),
       _useState2 = _slicedToArray(_useState, 2),
       status = _useState2[0],
       setGlobalStatus = _useState2[1];
@@ -43,26 +45,27 @@ exports.default = function (props, _ref) {
     loading: setLoading,
     info: handleInfo,
     clear: handleClear,
-    confirm: handleConfirm
+    confirm: handleConfirm,
+    set: setGlobalHandler
   };
 
   var store = _extends({
     config: config
   }, props, {
     children: null,
-    status: status
-  }, global, {
+    status: status,
     handle: handlers,
-    store: {
+    store: _extends({}, global, {
       get: getGlobal,
       set: setGlobal
-    },
+    }),
     route: {
       get: function get(str) {
         return str ? router.asPath.includes(str) : router.asPath;
       },
       set: setRoute
-    }
+    },
+    cookies: _jsCookie2.default
   });
 
   store.act = act.bind(store);
@@ -98,13 +101,22 @@ exports.default = function (props, _ref) {
       }
     } else global = {};
 
+    // console.log('GLOBAL', { data, global })
     setGlobalStore(!data ? {} : global);
     handleClear();
     return Promise.resolve(data);
   }
 
+  function setGlobalHandler(handler) {
+    if ((typeof handler === 'undefined' ? 'undefined' : _typeof(handler)) !== 'object') return;
+    var handlerName = Object.key(handler).shift();
+    handlers[handlerName] = handler[handlerName];
+    return Promise.resolve(handler);
+  }
+
   function setLoading(loading) {
-    status.loading !== loading && setGlobalStatus(_extends({}, defaultStatus, { loading: loading }));
+    var globalStatus = _extends({}, defaultStatus, { loading: loading });
+    status.loading !== loading && setGlobalStatus(globalStatus);
   }
 
   function setRoute(name, disableRoute) {
@@ -113,11 +125,11 @@ exports.default = function (props, _ref) {
     return new Promise(function (resolve) {
       if (disableRoute || router.asPath === (route.link || name)) return resolve(route);
 
-      router.events.on('routeChangeComplete', function (url) {
-        router.events.off('routeChangeComplete');
-        return resolve(url);
-      });
-      router.push(route.link, route.link, { shallow: true });
+      // router.events.on('routeChangeComplete', (url) => {
+      //   router.events.off('routeChangeComplete');
+      //   return resolve(url);
+      // });
+      return resolve(router.push(route.link, route.link, { shallow: true }));
     });
   }
 

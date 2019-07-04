@@ -63,6 +63,8 @@ export function act(){
   const actionName = args.shift();
   const actions = GlobalProvider.actions;
   
+  // console.log('[ACT]', actionName, args);
+  
   const handleError = (error) => {
     console.warn(error);
     return this && this.handle && this.handle.info(error);
@@ -97,8 +99,11 @@ export function action(actionName){
 }
 
 export function getRequestPromise(actionName, request){
-  let { method, endpoint, path, req } = request || {};
+  let { method, endpoint, path, req, query } = request || {};
   const { GQL_URL, WSS_URL, endpoints } = this.config || {};
+  
+  console.warn(actionName, endpoint || query && query.replace(/[\n\t]/gm, '').trim().substr(0, 50) || '');
+  
   req = {
     method: actionName || req && req.method || method || 'GET',
     endpoint: req && req.endpoint || endpoint,
