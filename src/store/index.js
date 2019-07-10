@@ -1,10 +1,12 @@
 import fetchier, { GET, POST, PUT, GQL, WS } from 'fetchier';
 import Cookies from 'js-cookie';
 import useStore from './useStore';
+import useSubStore  from "./useSubStore";
 // import queries from '../data/graphqlQueries';
 import react from 'react';
 
 let context;
+let initSubscription;
 
 const { createContext, useContext, useState, useEffect } = react;
 context = context || createContext(null);
@@ -16,15 +18,29 @@ export function GlobalProvider(props){
   return react.createElement(context.Provider, { children, value });
 }
 
-GlobalProvider.context = context;
+export function useSubscription(props) {
+  initSubscription = useSubStore(props);
+  return initSubscription;
+}
 
+export function useSubscribe() {
+  return initSubscription();
+}
+
+export function useMemoize(Component, props) {
+  const deps = Object.values(props);
+  console.log("deps", props);
+  return react.useMemo(() => react.createElement(Component, deps), props)
+}
+
+GlobalProvider.context = context;
 
 export default {
   // act,
   getRequestPromise,
   GlobalProvider,
   useActions,
-  useGlobal,
+  useGlobal
   // action
 }
 

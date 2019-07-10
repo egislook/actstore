@@ -4,9 +4,7 @@ import { useState, useEffect } from 'react';
 const defaultStatus = { loading: null, info: null, confirm: null, update: null };
 
 export default (props, { act, action, useActions }) => {
-  
   const { router, init, actions, config } = props;
-    
   const [status, setGlobalStatus] = useState({ ...defaultStatus, loading: typeof window !== 'object' });
   let [global, setGlobalStore] = useState({ token: cookies.get('token') });
   

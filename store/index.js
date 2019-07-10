@@ -9,6 +9,9 @@ var _extends = Object.assign || function (target) { for (var i = 1; i < argument
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
 
 exports.GlobalProvider = GlobalProvider;
+exports.useSubscription = useSubscription;
+exports.useSubscribe = useSubscribe;
+exports.useMemoize = useMemoize;
 exports.useActions = useActions;
 exports.useGlobal = useGlobal;
 exports.act = act;
@@ -27,6 +30,10 @@ var _useStore = require('./useStore');
 
 var _useStore2 = _interopRequireDefault(_useStore);
 
+var _useSubStore = require('./useSubStore');
+
+var _useSubStore2 = _interopRequireDefault(_useSubStore);
+
 var _react = require('react');
 
 var _react2 = _interopRequireDefault(_react);
@@ -38,6 +45,7 @@ function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr
 
 
 var context = void 0;
+var initSubscription = void 0;
 
 var createContext = _react2.default.createContext,
     useContext = _react2.default.useContext,
@@ -52,6 +60,23 @@ function GlobalProvider(props) {
   var value = (0, _useStore2.default)(props, { act: act, useActions: useActions, action: action });
   // return <context.Provider value={value} children={children} />
   return _react2.default.createElement(context.Provider, { children: children, value: value });
+}
+
+function useSubscription(props) {
+  initSubscription = (0, _useSubStore2.default)(props);
+  return initSubscription;
+}
+
+function useSubscribe() {
+  return initSubscription();
+}
+
+function useMemoize(Component, props) {
+  var deps = Object.values(props);
+  console.log("deps", props);
+  return _react2.default.useMemo(function () {
+    return _react2.default.createElement(Component, deps);
+  }, props);
 }
 
 GlobalProvider.context = context;
