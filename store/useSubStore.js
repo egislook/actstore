@@ -169,7 +169,7 @@ function act() {
 
   var args = [].concat(Array.prototype.slice.call(arguments));
   var actionName = args.shift();
-  var actions = _index.GlobalProvider.actions;
+  var actions = this.actions;
   // console.log('[ACT]', actionName, args);
   var handleError = function handleError(error) {
     console.warn(error);

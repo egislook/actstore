@@ -1,6 +1,6 @@
 import cookies from "js-cookie";
 import React, { useEffect, useState } from "react";
-import { getRequestPromise, GlobalProvider } from "./index";
+import { getRequestPromise } from "./index";
 
 const defaultStatus = {
   loading: null,
@@ -131,7 +131,7 @@ function setState(newState) {
 function act() {
   const args = [...arguments];
   const actionName = args.shift();
-  const actions = GlobalProvider.actions;
+  const actions = this.actions;
   // console.log('[ACT]', actionName, args);
   const handleError = error => {
     console.warn(error);

@@ -43,7 +43,7 @@ export function useSubscribe() {
 }
 
 export function usePerform(fn, store) {
-  const initSubscription = useSubStore({ actions: fn});
+  const initSubscription = useSubStore({ actions: fn });
   const actStore = initSubscription();
   const state = store || actStore || {};
   const actions = fn(state);
@@ -54,6 +54,33 @@ export function usePerform(fn, store) {
     actStore.actions[actionName] = actions[actionName].bind(state.set);
   }
   return state;
+}
+
+/*
+  One Hooks To Rule Them ALL :D
+ */
+export function useActStore(args) {
+  if (typeof args === "object") { // Initialize stage
+    console.log("useActStore args is object");
+    initSubscription = useSubStore(args);
+    return initSubscription;
+  } else if (typeof args === "function") { // useActions
+    console.log("useActStore args is function");
+    const initSubscription = useSubStore({ actions: args });
+    const actStore = initSubscription();
+    const state = actStore || {};
+    const actions = args(state);
+    if (!actStore.actions) actStore.actions = {};
+    const firstActionName = Object.keys(actions).shift();
+    if (actStore.actions[firstActionName]) return state;
+    for (let actionName in actions) {
+      actStore.actions[actionName] = actions[actionName].bind(state.set);
+    }
+    return state;
+  } else { // useGlobal
+    console.log("useActStore without argument");
+    return initSubscription();
+  }
 }
 
 /*
@@ -74,20 +101,20 @@ export function Memo({ children, triggers }) {
   if (triggers) {
     // noinspection JSCheckFunctionSignatures
     return children.map((child, index) =>
-        react.useMemo(
-            () => child,
-            triggers ? Object.values(triggers[index]) : Object.values(child.props)
-        )
+      react.useMemo(
+        () => child,
+        triggers ? Object.values(triggers[index]) : Object.values(child.props)
+      )
     );
   } else {
     // noinspection JSCheckFunctionSignatures
     return children.map(child =>
-        react.useMemo(
-            () => child,
-            child.props.triggers
-                ? Object.values(child.props.triggers)
-                : Object.values(child.props)
-        )
+      react.useMemo(
+        () => child,
+        child.props.triggers
+          ? Object.values(child.props.triggers)
+          : Object.values(child.props)
+      )
     );
   }
 }

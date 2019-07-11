@@ -7,11 +7,14 @@ Object.defineProperty(exports, "__esModule", {
 var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
 
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
+// import queries from '../data/graphqlQueries';
+
 
 exports.GlobalProvider = GlobalProvider;
 exports.useSubscription = useSubscription;
 exports.useSubscribe = useSubscribe;
 exports.usePerform = usePerform;
+exports.useActStore = useActStore;
 exports.useMemoize = useMemoize;
 exports.Memo = Memo;
 exports.useActions = useActions;
@@ -43,8 +46,6 @@ var _react2 = _interopRequireDefault(_react);
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
-// import queries from '../data/graphqlQueries';
-
 
 var context = void 0;
 var initSubscription = void 0;
@@ -100,6 +101,36 @@ function usePerform(fn, store) {
     actStore.actions[actionName] = actions[actionName].bind(state.set);
   }
   return state;
+}
+
+/*
+  One Hooks To Rule Them ALL :D
+ */
+function useActStore(args) {
+  if ((typeof args === "undefined" ? "undefined" : _typeof(args)) === "object") {
+    // Initialize stage
+    console.log("useActStore args is object");
+    initSubscription = (0, _useSubStore2.default)(args);
+    return initSubscription;
+  } else if (typeof args === "function") {
+    // useActions
+    console.log("useActStore args is function");
+    var _initSubscription = (0, _useSubStore2.default)({ actions: args });
+    var actStore = _initSubscription();
+    var state = actStore || {};
+    var actions = args(state);
+    if (!actStore.actions) actStore.actions = {};
+    var firstActionName = Object.keys(actions).shift();
+    if (actStore.actions[firstActionName]) return state;
+    for (var actionName in actions) {
+      actStore.actions[actionName] = actions[actionName].bind(state.set);
+    }
+    return state;
+  } else {
+    // useGlobal
+    console.log("useActStore without argument");
+    return initSubscription();
+  }
 }
 
 /*
