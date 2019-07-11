@@ -13,6 +13,7 @@ exports.useSubscription = useSubscription;
 exports.useSubscribe = useSubscribe;
 exports.usePerform = usePerform;
 exports.useMemoize = useMemoize;
+exports.Memo = Memo;
 exports.useActions = useActions;
 exports.useGlobal = useGlobal;
 exports.act = act;
@@ -114,6 +115,27 @@ function useMemoize(Component, props, triggers) {
   }, triggers ? Object.values(triggers) : Object.values(props));
 }
 
+function Memo(_ref) {
+  var children = _ref.children,
+      triggers = _ref.triggers;
+
+  if (triggers) {
+    // noinspection JSCheckFunctionSignatures
+    return children.map(function (child, index) {
+      return _react2.default.useMemo(function () {
+        return child;
+      }, triggers ? Object.values(triggers[index]) : Object.values(child.props));
+    });
+  } else {
+    // noinspection JSCheckFunctionSignatures
+    return children.map(function (child) {
+      return _react2.default.useMemo(function () {
+        return child;
+      }, child.props.triggers ? Object.values(child.props.triggers) : Object.values(child.props));
+    });
+  }
+}
+
 GlobalProvider.context = context;
 
 exports.default = {
@@ -194,17 +216,17 @@ function action(actionName) {
 }
 
 function getRequestPromise(actionName, request) {
-  var _ref = request || {},
-      method = _ref.method,
-      endpoint = _ref.endpoint,
-      path = _ref.path,
-      req = _ref.req,
-      query = _ref.query;
+  var _ref2 = request || {},
+      method = _ref2.method,
+      endpoint = _ref2.endpoint,
+      path = _ref2.path,
+      req = _ref2.req,
+      query = _ref2.query;
 
-  var _ref2 = this.config || {},
-      GQL_URL = _ref2.GQL_URL,
-      WSS_URL = _ref2.WSS_URL,
-      endpoints = _ref2.endpoints;
+  var _ref3 = this.config || {},
+      GQL_URL = _ref3.GQL_URL,
+      WSS_URL = _ref3.WSS_URL,
+      endpoints = _ref3.endpoints;
 
   console.warn(actionName, endpoint || query && query.replace(/[\n\t]/gm, "").trim().substr(0, 50) || "");
 

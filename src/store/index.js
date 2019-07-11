@@ -70,6 +70,28 @@ export function useMemoize(Component, props, triggers) {
   );
 }
 
+export function Memo({ children, triggers }) {
+  if (triggers) {
+    // noinspection JSCheckFunctionSignatures
+    return children.map((child, index) =>
+        react.useMemo(
+            () => child,
+            triggers ? Object.values(triggers[index]) : Object.values(child.props)
+        )
+    );
+  } else {
+    // noinspection JSCheckFunctionSignatures
+    return children.map(child =>
+        react.useMemo(
+            () => child,
+            child.props.triggers
+                ? Object.values(child.props.triggers)
+                : Object.values(child.props)
+        )
+    );
+  }
+}
+
 GlobalProvider.context = context;
 
 export default {
