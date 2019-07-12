@@ -63,7 +63,7 @@ export function useActStore(args) {
   if (typeof args === "object") { // Initialize stage
     console.log("useActStore args is object");
     initSubscription = useSubStore(args);
-    return initSubscription;
+    return initSubscription();
   } else if (typeof args === "function") { // useActions
     console.log("useActStore args is function");
     const initSubscription = useSubStore({ actions: args });
