@@ -48,6 +48,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
 
 var context = void 0;
+var actStore = null;
 var initSubscription = void 0;
 
 var createContext = _react2.default.createContext,
@@ -103,33 +104,36 @@ function usePerform(fn, store) {
   return state;
 }
 
-/*
-  One Hooks To Rule Them ALL :D
- */
-function useActStore(args) {
-  if ((typeof args === "undefined" ? "undefined" : _typeof(args)) === "object") {
-    // Initialize stage
-    console.log("useActStore args is object");
-    initSubscription = (0, _useSubStore2.default)(args);
-    return initSubscription();
-  } else if (typeof args === "function") {
-    // useActions
-    console.log("useActStore args is function");
-    var _initSubscription = (0, _useSubStore2.default)({ actions: args });
-    var actStore = _initSubscription();
-    var state = actStore || {};
-    var actions = args(state);
-    if (!actStore.actions) actStore.actions = {};
-    var firstActionName = Object.keys(actions).shift();
-    if (actStore.actions[firstActionName]) return state;
-    for (var actionName in actions) {
-      actStore.actions[actionName] = actions[actionName].bind(state.set);
-    }
-    return state;
+// Global Hooks
+function useActStore(props) {
+  if (!actStore) {
+    var init = (0, _useSubStore2.default)(props, { subAct: subAct, subAction: subAction, useSubActions: useSubActions });
+    actStore = init();
+    return actStore;
   } else {
-    // useGlobal
-    console.log("useActStore without argument");
-    return initSubscription();
+    if ((typeof props === "undefined" ? "undefined" : _typeof(props)) === "object") {
+      var actions = props.actions;
+
+      if (actions) useSubActions(actions, actStore);
+      return actStore;
+    } else if (typeof props === "function") {
+      var _init = _useSubStore.useInternalStore.bind(actStore);
+      actStore = _init();
+      var state = actStore || {};
+      var _actions = props(state);
+      if (!actStore.actions) actStore.actions = {};
+      var firstActionName = Object.keys(_actions).shift();
+      if (actStore.actions[firstActionName]) return state;
+      for (var actionName in _actions) {
+        // noinspection JSUnfilteredForInLoop
+        actStore.actions[actionName] = _actions[actionName].bind(state.set);
+      }
+      return state;
+    } else {
+      var _init2 = _useSubStore.useInternalStore.bind(actStore);
+      _init2();
+      return actStore;
+    }
   }
 }
 
@@ -244,6 +248,47 @@ function action(actionName) {
   return function () {
     return actions[actionName].apply(this, arguments);
   };
+}
+
+// Global Registration
+function subAct() {
+  var _this2 = this;
+
+  var args = [].concat(Array.prototype.slice.call(arguments));
+  var actionName = args.shift();
+  var actions = this.actions;
+  var handleError = function handleError(error) {
+    console.warn(error);
+    return _this2 && _this2.handle && _this2.handle.info(error);
+  };
+  if (typeof actionName === "function") return actionName.apply(this, arguments);
+  if (typeof actionName === "string") {
+    var actFunction = actions[actionName] ? actions[actionName].bind(this).apply(undefined, _toConsumableArray(args)) : getRequestPromise.apply(this, arguments);
+    return (typeof actFunction === "undefined" ? "undefined" : _typeof(actFunction)) === "object" ? actFunction.catch(handleError) : Promise.resolve(actFunction);
+  }
+  if (Array.isArray(actionName)) return Promise.all(actionName.map(function (request) {
+    return typeof request === "string" ? act.bind(_this2)(request) : (typeof request === "undefined" ? "undefined" : _typeof(request)) === "object" ? getRequestPromise.bind(_this2)(null, request) : request;
+  })).catch(handleError);
+  return handleError(actionName + " action is missing correct actionName as first parameter");
+}
+function subAction(actionName) {
+  var actions = actStore.actions;
+  if (typeof actionName !== "string" || !actions[actionName]) return Promise.reject(actionName + " action can not be found");
+  return function () {
+    return actions[actionName].apply(this, arguments);
+  };
+}
+function useSubActions(fn, store) {
+  var state = store || {};
+  var actions = fn(state);
+  if (!actStore.actions) actStore.actions = {};
+  var firstActionName = Object.keys(actions).shift();
+  if (actStore.actions[firstActionName]) return state;
+  for (var actionName in actions) {
+    // noinspection JSUnfilteredForInLoop
+    actStore.actions[actionName] = actions[actionName].bind(state.set);
+  }
+  return state;
 }
 
 function getRequestPromise(actionName, request) {
