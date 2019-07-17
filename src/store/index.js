@@ -57,38 +57,6 @@ export function usePerform(fn, store) {
   return state;
 }
 
-// Global Hooks
-export function useActStore(props) {
-  if (!actStore) {
-    const init = useSubStore(props, { subAct, subAction, useSubActions });
-    actStore = init();
-    return actStore;
-  } else {
-    if (typeof props === "object") {
-      const { actions } = props;
-      if (actions) useSubActions(actions, actStore);
-      return actStore;
-    } else if (typeof props === "function") {
-      const init = useInternalStore.bind(actStore);
-      actStore = init();
-      const state = actStore || {};
-      const actions = props(state);
-      if (!actStore.actions) actStore.actions = {};
-      const firstActionName = Object.keys(actions).shift();
-      if (actStore.actions[firstActionName]) return state;
-      for (let actionName in actions) {
-        // noinspection JSUnfilteredForInLoop
-        actStore.actions[actionName] = actions[actionName].bind(state.set);
-      }
-      return state;
-    } else {
-      const init = useInternalStore.bind(actStore);
-      init();
-      return actStore;
-    }
-  }
-}
-
 /*
   Cleaner function to memoize child components,
   only state change in the props will cause a re-render
@@ -215,60 +183,6 @@ export function action(actionName) {
   };
 }
 
-// Global Registration
-function subAct() {
-  const args = [...arguments];
-  const actionName = args.shift();
-  const actions = this.actions;
-  const handleError = error => {
-    console.warn(error);
-    return this && this.handle && this.handle.info(error);
-  };
-  if (typeof actionName === "function")
-    return actionName.apply(this, arguments);
-  if (typeof actionName === "string") {
-    const actFunction = actions[actionName]
-      ? actions[actionName].bind(this)(...args)
-      : getRequestPromise.apply(this, arguments);
-    return typeof actFunction === "object"
-      ? actFunction.catch(handleError)
-      : Promise.resolve(actFunction);
-  }
-  if (Array.isArray(actionName))
-    return Promise.all(
-      actionName.map(request =>
-        typeof request === "string"
-          ? act.bind(this)(request)
-          : typeof request === "object"
-          ? getRequestPromise.bind(this)(null, request)
-          : request
-      )
-    ).catch(handleError);
-  return handleError(
-    actionName + " action is missing correct actionName as first parameter"
-  );
-}
-function subAction(actionName) {
-  const actions = actStore.actions;
-  if (typeof actionName !== "string" || !actions[actionName])
-    return Promise.reject(actionName + " action can not be found");
-  return function() {
-    return actions[actionName].apply(this, arguments);
-  };
-}
-function useSubActions(fn, store) {
-  const state = store || {};
-  const actions = fn(state);
-  if (!actStore.actions) actStore.actions = {};
-  const firstActionName = Object.keys(actions).shift();
-  if (actStore.actions[firstActionName]) return state;
-  for (let actionName in actions) {
-    // noinspection JSUnfilteredForInLoop
-    actStore.actions[actionName] = actions[actionName].bind(state.set);
-  }
-  return state;
-}
-
 export function getRequestPromise(actionName, request) {
   let { method, endpoint, path, req, query } = request || {};
   const { GQL_URL, WSS_URL, endpoints } = this.config || {};
@@ -301,7 +215,7 @@ export function getRequestPromise(actionName, request) {
         req.method === "GQL" ? GQL_URL : endpoints[endpoint] + req.path;
       return fetchier[req.method]({ url, token, ...req });
     case "OPEN":
-      return WS.OPEN({ url: WSS_URL, token, ...req });
+      return WS.OPEN({ url: WSS_URL, token, ...req }, null);
     case "CLOSE":
       return WS.CLOSE({ url: WSS_URL, ...req });
     case "PUT":
@@ -313,4 +227,151 @@ export function getRequestPromise(actionName, request) {
   }
 
   return Promise.reject("Incorrect action " + actionName);
+}
+
+
+// Global Hooks
+export function useActStore(props) {
+  if (!actStore) {
+    const init = useSubStore(props, { act: subAct, action: subAction, useSubActions });
+    actStore = init();
+    return actStore;
+  } else {
+    if (typeof props === "object") {
+      const { actions } = props;
+      if (actions) useSubActions(actions, actStore);
+      return actStore;
+    } else if (typeof props === "function") {
+      const init = useInternalStore.bind(actStore);
+      actStore = init();
+      const state = actStore || {};
+      const actions = props(state);
+      if (!actStore.actions) actStore.actions = {};
+      const firstActionName = Object.keys(actions).shift();
+      if (actStore.actions[firstActionName]) return state;
+      for (let actionName in actions) {
+        // noinspection JSUnfilteredForInLoop
+        actStore.actions[actionName] = actions[actionName].bind(state.set);
+      }
+      return state;
+    } else {
+      const init = useInternalStore.bind(actStore);
+      init();
+      return actStore;
+    }
+  }
+}
+/*
+    Internal act object which will hold all executable actions
+    EX: store.act.doSomething(cool);
+ */
+/*
+function useActions(fn, store) {
+  console.log("useActions", fn);
+  const state = store || {};
+  const actions = fn(state);
+  if (!actStore.actions) actStore.actions = {};
+  const firstActionName = Object.keys(actions).shift();
+  if (actStore.actions[firstActionName]) return state;
+  for (let actionName in actions) {
+    // noinspection JSUnfilteredForInLoop
+    actStore.actions[actionName] = actions[actionName].bind(state.set);
+  }
+  return state;
+}
+ */
+// Global Getters
+function getSubRequestPromise(actionName, request) {
+  let { method, endpoint, path, req, query } = request || {};
+  const { GQL_URL, WSS_URL, endpoints } = this.config || {};
+  console.warn(
+    actionName,
+    endpoint ||
+    (query &&
+      query
+        .replace(/[\n\t]/gm, "")
+        .trim()
+        .substr(0, 50)) ||
+    ""
+  );
+  req = {
+    method: actionName || (req && req.method) || method || "GET",
+    endpoint: (req && req.endpoint) || endpoint,
+    path: (req && req.path) || path || "",
+    ...(req || request)
+  };
+  const token = Cookies.get("token");
+  switch (req.method) {
+    case "GQL":
+    case "POST":
+    case "GET":
+      const url =
+        req.method === "GQL" ? GQL_URL : endpoints[endpoint] + req.path;
+      return fetchier[req.method]({ url, token, ...req });
+    case "OPEN":
+      return WS.OPEN({ url: WSS_URL, token, ...req }, null);
+    case "CLOSE":
+      return WS.CLOSE({ url: WSS_URL, ...req });
+    case "PUT":
+      return PUT({ ...req });
+    case "SUB":
+      return WS.SUB({ url: req.url || WSS_URL, subscription: req });
+    case "UNSUB":
+      return WS.UNSUB({ url: WSS_URL, ...req });
+  }
+  return Promise.reject("Incorrect action " + actionName);
+}
+
+// Global Registration
+function subAct() {
+  const args = [...arguments];
+  const actionName = args.shift();
+  const actions = this.actions;
+  const handleError = error => {
+    console.warn(error);
+    return this && this.handle && this.handle.info(error);
+  };
+  if (typeof actionName === "function")
+    return actionName.apply(this, arguments);
+  if (typeof actionName === "string") {
+    const actFunction = actions[actionName]
+      ? actions[actionName].bind(this)(...args)
+      : getSubRequestPromise.apply(this, arguments);
+    return typeof actFunction === "object"
+      ? actFunction.catch(handleError)
+      : Promise.resolve(actFunction);
+  }
+  if (Array.isArray(actionName))
+    return Promise.all(
+      actionName.map(request =>
+        typeof request === "string"
+          ? subAct.bind(this)(request)
+          : typeof request === "object"
+          ? getSubRequestPromise.bind(this)(null, request)
+          : request
+      )
+    ).catch(handleError);
+  return handleError(
+    actionName + " action is missing correct actionName as first parameter"
+  );
+}
+function subAction(actionName) {
+  const actions = actStore.actions;
+  if (typeof actionName !== "string" || !actions[actionName])
+    return Promise.reject(actionName + " action can not be found");
+  return function() {
+    return actions[actionName].apply(this, arguments);
+  };
+}
+function useSubActions(fn, store) {
+  const state = store || {};
+  const actions = fn(state);
+  if (!actStore.actions) actStore.actions = {};
+  const firstActionName = Object.keys(actions).shift();
+  if (actStore.actions[firstActionName]) return state;
+  for (let actionName in actions) {
+    // noinspection JSUnfilteredForInLoop
+    actStore.actions[actionName] = actions[actionName].bind(state.set);
+  }
+  return state;
 }

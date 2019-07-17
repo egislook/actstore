@@ -11,7 +11,7 @@ const DEFAULT_STATUS = {
 /*
     This is our useActStore() hooks
  */
-function useSubStore(props, { subAct, subAction }) {
+function useSubStore(props, { act, action }) {
   const { actions, config, init, router } = props;
   const handlers = {
     clear: handleClear,
@@ -46,8 +46,8 @@ function useSubStore(props, { subAct, subAction }) {
   // Give internal setState function access our store
   store.setState = setState.bind(store);
   // Generate internal act object of executable actions
-  store.act = subAct.bind(store);
-  store.action = subAction.bind(store);
+  store.act = act.bind(store);
+  store.action = action.bind(store);
   // noinspection JSCheckFunctionSignatures
   registerActions.call(store, actions);
   // Return generated store

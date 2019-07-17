@@ -7,14 +7,11 @@ Object.defineProperty(exports, "__esModule", {
 var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
 
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
-// import queries from '../data/graphqlQueries';
-
 
 exports.GlobalProvider = GlobalProvider;
 exports.useSubscription = useSubscription;
 exports.useSubscribe = useSubscribe;
 exports.usePerform = usePerform;
-exports.useActStore = useActStore;
 exports.useMemoize = useMemoize;
 exports.Memo = Memo;
 exports.useActions = useActions;
@@ -22,6 +19,7 @@ exports.useGlobal = useGlobal;
 exports.act = act;
 exports.action = action;
 exports.getRequestPromise = getRequestPromise;
+exports.useActStore = useActStore;
 
 var _fetchier = require("fetchier");
 
@@ -46,6 +44,8 @@ var _react2 = _interopRequireDefault(_react);
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
+// import queries from '../data/graphqlQueries';
+
 
 var context = void 0;
 var actStore = null;
@@ -102,39 +102,6 @@ function usePerform(fn, store) {
     actStore.actions[actionName] = actions[actionName].bind(state.set);
   }
   return state;
-}
-
-// Global Hooks
-function useActStore(props) {
-  if (!actStore) {
-    var init = (0, _useSubStore2.default)(props, { subAct: subAct, subAction: subAction, useSubActions: useSubActions });
-    actStore = init();
-    return actStore;
-  } else {
-    if ((typeof props === "undefined" ? "undefined" : _typeof(props)) === "object") {
-      var actions = props.actions;
-
-      if (actions) useSubActions(actions, actStore);
-      return actStore;
-    } else if (typeof props === "function") {
-      var _init = _useSubStore.useInternalStore.bind(actStore);
-      actStore = _init();
-      var state = actStore || {};
-      var _actions = props(state);
-      if (!actStore.actions) actStore.actions = {};
-      var firstActionName = Object.keys(_actions).shift();
-      if (actStore.actions[firstActionName]) return state;
-      for (var actionName in _actions) {
-        // noinspection JSUnfilteredForInLoop
-        actStore.actions[actionName] = _actions[actionName].bind(state.set);
-      }
-      return state;
-    } else {
-      var _init2 = _useSubStore.useInternalStore.bind(actStore);
-      _init2();
-      return actStore;
-    }
-  }
 }
 
 /*
@@ -250,47 +217,6 @@ function action(actionName) {
   };
 }
 
-// Global Registration
-function subAct() {
-  var _this2 = this;
-
-  var args = [].concat(Array.prototype.slice.call(arguments));
-  var actionName = args.shift();
-  var actions = this.actions;
-  var handleError = function handleError(error) {
-    console.warn(error);
-    return _this2 && _this2.handle && _this2.handle.info(error);
-  };
-  if (typeof actionName === "function") return actionName.apply(this, arguments);
-  if (typeof actionName === "string") {
-    var actFunction = actions[actionName] ? actions[actionName].bind(this).apply(undefined, _toConsumableArray(args)) : getRequestPromise.apply(this, arguments);
-    return (typeof actFunction === "undefined" ? "undefined" : _typeof(actFunction)) === "object" ? actFunction.catch(handleError) : Promise.resolve(actFunction);
-  }
-  if (Array.isArray(actionName)) return Promise.all(actionName.map(function (request) {
-    return typeof request === "string" ? act.bind(_this2)(request) : (typeof request === "undefined" ? "undefined" : _typeof(request)) === "object" ? getRequestPromise.bind(_this2)(null, request) : request;
-  })).catch(handleError);
-  return handleError(actionName + " action is missing correct actionName as first parameter");
-}
-function subAction(actionName) {
-  var actions = actStore.actions;
-  if (typeof actionName !== "string" || !actions[actionName]) return Promise.reject(actionName + " action can not be found");
-  return function () {
-    return actions[actionName].apply(this, arguments);
-  };
-}
-function useSubActions(fn, store) {
-  var state = store || {};
-  var actions = fn(state);
-  if (!actStore.actions) actStore.actions = {};
-  var firstActionName = Object.keys(actions).shift();
-  if (actStore.actions[firstActionName]) return state;
-  for (var actionName in actions) {
-    // noinspection JSUnfilteredForInLoop
-    actStore.actions[actionName] = actions[actionName].bind(state.set);
-  }
-  return state;
-}
-
 function getRequestPromise(actionName, request) {
   var _ref2 = request || {},
       method = _ref2.method,
@@ -321,7 +247,7 @@ function getRequestPromise(actionName, request) {
       var url = req.method === "GQL" ? GQL_URL : endpoints[endpoint] + req.path;
       return _fetchier2.default[req.method](_extends({ url: url, token: token }, req));
     case "OPEN":
-      return _fetchier.WS.OPEN(_extends({ url: WSS_URL, token: token }, req));
+      return _fetchier.WS.OPEN(_extends({ url: WSS_URL, token: token }, req), null);
     case "CLOSE":
       return _fetchier.WS.CLOSE(_extends({ url: WSS_URL }, req));
     case "PUT":
@@ -333,4 +259,137 @@ function getRequestPromise(actionName, request) {
   }
 
   return Promise.reject("Incorrect action " + actionName);
+}
+
+// Global Hooks
+function useActStore(props) {
+  if (!actStore) {
+    var init = (0, _useSubStore2.default)(props, { act: subAct, action: subAction, useSubActions: useSubActions });
+    actStore = init();
+    return actStore;
+  } else {
+    if ((typeof props === "undefined" ? "undefined" : _typeof(props)) === "object") {
+      var actions = props.actions;
+
+      if (actions) useSubActions(actions, actStore);
+      return actStore;
+    } else if (typeof props === "function") {
+      var _init = _useSubStore.useInternalStore.bind(actStore);
+      actStore = _init();
+      var state = actStore || {};
+      var _actions = props(state);
+      if (!actStore.actions) actStore.actions = {};
+      var firstActionName = Object.keys(_actions).shift();
+      if (actStore.actions[firstActionName]) return state;
+      for (var actionName in _actions) {
+        // noinspection JSUnfilteredForInLoop
+        actStore.actions[actionName] = _actions[actionName].bind(state.set);
+      }
+      return state;
+    } else {
+      var _init2 = _useSubStore.useInternalStore.bind(actStore);
+      _init2();
+      return actStore;
+    }
+  }
+}
+/*
+    Internal act object which will hold all executable actions
+    EX: store.act.doSomething(cool);
+ */
+/*
+function useActions(fn, store) {
+  console.log("useActions", fn);
+  const state = store || {};
+  const actions = fn(state);
+  if (!actStore.actions) actStore.actions = {};
+  const firstActionName = Object.keys(actions).shift();
+  if (actStore.actions[firstActionName]) return state;
+  for (let actionName in actions) {
+    // noinspection JSUnfilteredForInLoop
+    actStore.actions[actionName] = actions[actionName].bind(state.set);
+  }
+  return state;
+}
+ */
+// Global Getters
+function getSubRequestPromise(actionName, request) {
+  var _ref4 = request || {},
+      method = _ref4.method,
+      endpoint = _ref4.endpoint,
+      path = _ref4.path,
+      req = _ref4.req,
+      query = _ref4.query;
+
+  var _ref5 = this.config || {},
+      GQL_URL = _ref5.GQL_URL,
+      WSS_URL = _ref5.WSS_URL,
+      endpoints = _ref5.endpoints;
+
+  console.warn(actionName, endpoint || query && query.replace(/[\n\t]/gm, "").trim().substr(0, 50) || "");
+  req = _extends({
+    method: actionName || req && req.method || method || "GET",
+    endpoint: req && req.endpoint || endpoint,
+    path: req && req.path || path || ""
+  }, req || request);
+  var token = _jsCookie2.default.get("token");
+  switch (req.method) {
+    case "GQL":
+    case "POST":
+    case "GET":
+      var url = req.method === "GQL" ? GQL_URL : endpoints[endpoint] + req.path;
+      return _fetchier2.default[req.method](_extends({ url: url, token: token }, req));
+    case "OPEN":
+      return _fetchier.WS.OPEN(_extends({ url: WSS_URL, token: token }, req), null);
+    case "CLOSE":
+      return _fetchier.WS.CLOSE(_extends({ url: WSS_URL }, req));
+    case "PUT":
+      return (0, _fetchier.PUT)(_extends({}, req));
+    case "SUB":
+      return _fetchier.WS.SUB({ url: req.url || WSS_URL, subscription: req });
+    case "UNSUB":
+      return _fetchier.WS.UNSUB(_extends({ url: WSS_URL }, req));
+  }
+  return Promise.reject("Incorrect action " + actionName);
+}
+
+// Global Registration
+function subAct() {
+  var _this2 = this;
+
+  var args = [].concat(Array.prototype.slice.call(arguments));
+  var actionName = args.shift();
+  var actions = this.actions;
+  var handleError = function handleError(error) {
+    console.warn(error);
+    return _this2 && _this2.handle && _this2.handle.info(error);
+  };
+  if (typeof actionName === "function") return actionName.apply(this, arguments);
+  if (typeof actionName === "string") {
+    var actFunction = actions[actionName] ? actions[actionName].bind(this).apply(undefined, _toConsumableArray(args)) : getSubRequestPromise.apply(this, arguments);
+    return (typeof actFunction === "undefined" ? "undefined" : _typeof(actFunction)) === "object" ? actFunction.catch(handleError) : Promise.resolve(actFunction);
+  }
+  if (Array.isArray(actionName)) return Promise.all(actionName.map(function (request) {
+    return typeof request === "string" ? subAct.bind(_this2)(request) : (typeof request === "undefined" ? "undefined" : _typeof(request)) === "object" ? getSubRequestPromise.bind(_this2)(null, request) : request;
+  })).catch(handleError);
+  return handleError(actionName + " action is missing correct actionName as first parameter");
+}
+function subAction(actionName) {
+  var actions = actStore.actions;
+  if (typeof actionName !== "string" || !actions[actionName]) return Promise.reject(actionName + " action can not be found");
+  return function () {
+    return actions[actionName].apply(this, arguments);
+  };
+}
+function useSubActions(fn, store) {
+  var state = store || {};
+  var actions = fn(state);
+  if (!actStore.actions) actStore.actions = {};
+  var firstActionName = Object.keys(actions).shift();
+  if (actStore.actions[firstActionName]) return state;
+  for (var actionName in actions) {
+    // noinspection JSUnfilteredForInLoop
+    actStore.actions[actionName] = actions[actionName].bind(state.set);
+  }
+  return state;
 }
