@@ -49,16 +49,16 @@ function useSubStore(props, _ref) {
     set: setGlobalHandler
   };
 
-  var _useState = (0, _react.useState)({ token: _jsCookie2.default.get("token") }),
-      _useState2 = _slicedToArray(_useState, 2),
-      global = _useState2[0],
-      setGlobalStatus = _useState2[1];
-
-  var _useState3 = (0, _react.useState)(_extends({}, DEFAULT_STATUS, {
+  var _useState = (0, _react.useState)(_extends({}, DEFAULT_STATUS, {
     loading: (typeof window === "undefined" ? "undefined" : _typeof(window)) !== "object"
   })),
+      _useState2 = _slicedToArray(_useState, 2),
+      status = _useState2[0],
+      setGlobalStatus = _useState2[1];
+
+  var _useState3 = (0, _react.useState)({ token: _jsCookie2.default.get("token") }),
       _useState4 = _slicedToArray(_useState3, 2),
-      status = _useState4[0],
+      global = _useState4[0],
       setGlobalStore = _useState4[1];
 
   var store = _extends({}, props, {

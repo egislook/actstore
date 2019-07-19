@@ -20,11 +20,11 @@ function useSubStore(props, { act, action }) {
     loading: setLoading,
     set: setGlobalHandler
   };
-  let [global, setGlobalStatus] = useState({ token: cookies.get("token") });
-  const [status, setGlobalStore] = useState({
+  const [status, setGlobalStatus] = useState({
     ...DEFAULT_STATUS,
     loading: typeof window !== "object"
   });
+  let [global, setGlobalStore] = useState({ token: cookies.get("token") });
   const store = {
     ...props,
     cookies,

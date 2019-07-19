@@ -8,18 +8,9 @@ var _extends = Object.assign || function (target) { for (var i = 1; i < argument
 
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
 
-exports.GlobalProvider = GlobalProvider;
-exports.useSubscription = useSubscription;
-exports.useSubscribe = useSubscribe;
-exports.usePerform = usePerform;
-exports.useMemoize = useMemoize;
-exports.Memo = Memo;
-exports.useActions = useActions;
-exports.useGlobal = useGlobal;
-exports.act = act;
-exports.action = action;
-exports.getRequestPromise = getRequestPromise;
-exports.useActStore = useActStore;
+var _react = require("react");
+
+var _react2 = _interopRequireDefault(_react);
 
 var _fetchier = require("fetchier");
 
@@ -29,367 +20,294 @@ var _jsCookie = require("js-cookie");
 
 var _jsCookie2 = _interopRequireDefault(_jsCookie);
 
-var _useStore = require("./useStore");
-
-var _useStore2 = _interopRequireDefault(_useStore);
-
-var _useSubStore = require("./useSubStore");
-
-var _useSubStore2 = _interopRequireDefault(_useSubStore);
-
-var _react = require("react");
-
-var _react2 = _interopRequireDefault(_react);
-
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
-// import queries from '../data/graphqlQueries';
 
+function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
 
-var context = void 0;
-var actStore = null;
-var initSubscription = void 0;
-
-var createContext = _react2.default.createContext,
-    useContext = _react2.default.useContext,
-    useState = _react2.default.useState,
-    useEffect = _react2.default.useEffect;
-
-context = context || createContext(null);
-
-function GlobalProvider(props) {
-  var children = props.children;
-
-  var value = (0, _useStore2.default)(props, { act: act, useActions: useActions, action: action });
-  // return <context.Provider value={value} children={children} />
-  return _react2.default.createElement(context.Provider, { children: children, value: value });
-}
-
-/*
-  Use this at root level component to initialize global store
-  @actions|Array is required
-
-  EX: App.js
-  useSubscription({ actions: [], initialState: { test: "Test" }});
- */
-function useSubscription(props) {
-  initSubscription = (0, _useSubStore2.default)(props);
-  return initSubscription;
-}
-
-/*
-  Use this to subscribe any component to global store
-
-  EX: Component.js
-  const actStore = useSubscribe();
-  const { act, store } = actStore;
-  console.log(store.test);
- */
-function useSubscribe() {
-  return initSubscription();
-}
-
-function usePerform(fn, store) {
-  var initSubscription = (0, _useSubStore2.default)({ actions: fn });
-  var actStore = initSubscription();
-  var state = store || actStore || {};
-  var actions = fn(state);
-  if (!actStore.actions) actStore.actions = {};
-  var firstActionName = Object.keys(actions).shift();
-  if (actStore.actions[firstActionName]) return state;
-  for (var actionName in actions) {
-    actStore.actions[actionName] = actions[actionName].bind(state.set);
-  }
-  return state;
-}
-
-/*
-  Cleaner function to memoize child components,
-  only state change in the props will cause a re-render
-
-  EX: useMemoize(Component, props);
- */
-function useMemoize(Component, props, triggers) {
-  // noinspection JSCheckFunctionSignatures
-  return _react2.default.useMemo(function () {
-    return _react2.default.createElement(Component, props);
-  }, triggers ? Object.values(triggers) : Object.values(props));
-}
-
-function Memo(_ref) {
-  var children = _ref.children,
-      triggers = _ref.triggers;
-
-  if (triggers) {
-    // noinspection JSCheckFunctionSignatures
-    return children.map(function (child, index) {
-      return _react2.default.useMemo(function () {
-        return child;
-      }, triggers ? Object.values(triggers[index]) : Object.values(child.props));
-    });
-  } else {
-    // noinspection JSCheckFunctionSignatures
-    return children.map(function (child) {
-      return _react2.default.useMemo(function () {
-        return child;
-      }, child.props.triggers ? Object.values(child.props.triggers) : Object.values(child.props));
-    });
-  }
-}
-
-GlobalProvider.context = context;
-
-exports.default = {
-  // act,
-  getRequestPromise: getRequestPromise,
-  GlobalProvider: GlobalProvider,
-  useActions: useActions,
-  useGlobal: useGlobal
-  // action
+var init = null;
+var defaultStatus = {
+  loading: null,
+  info: null,
+  confirm: null,
+  update: null
 };
 
-// Hooks
-
-function useActions(fn, globalContext) {
-  var state = globalContext || useContext(context) || {};
-  var actions = fn(state);
-
-  if (!GlobalProvider.actions) GlobalProvider.actions = {};
-
-  var firstActionName = Object.keys(actions).shift();
-  if (GlobalProvider.actions[firstActionName]) return state;
-
-  for (var actionName in actions) {
-    GlobalProvider.actions[actionName] = actions[actionName].bind(state.set);
+exports.default = function (args) {
+  if (!init) {
+    init = useStore(args);
+    var store = init();
+    store.act("APP_INIT");
+    return store;
   }
 
-  return state;
+  if ((typeof args === "undefined" ? "undefined" : _typeof(args)) === "object") {
+    var _store = init();
+    var actions = args.actions(_store);
+    if (!_store.actions) _store.actions = {};
+    var firstActionName = Object.keys(actions).shift();
+    if (_store.actions[firstActionName]) return _store;
+    for (var actionName in actions) {
+      _store.actions[actionName] = actions[actionName].bind(_store.set);
+    }
+    return _store;
+  }
+
+  if (typeof args === "function") {
+    var _store2 = init();
+    var _actions = args(_store2);
+    if (!_store2.actions) _store2.actions = {};
+    var _firstActionName = Object.keys(_actions).shift();
+    if (_store2.actions[_firstActionName]) return _store2;
+    for (var _actionName in _actions) {
+      _store2.actions[_actionName] = _actions[_actionName].bind(_store2.set);
+    }
+    return _store2;
+  }
+
+  return init();
+};
+/*
+    This is our useActStore() hooks
+ */
+
+
+function useStore(args) {
+  var actions = args.actions,
+      config = args.config,
+      init = args.init,
+      initialState = args.initialState,
+      router = args.router;
+
+  var handlers = {
+    clear: handleClear,
+    confirm: handleConfirm,
+    info: handleInfo,
+    loading: setLoading,
+    set: setGlobalHandler
+  };
+  var store = _extends({}, args, {
+    cookies: _jsCookie2.default,
+    config: config,
+    handle: handlers,
+    route: {
+      get: function get(str) {
+        return str ? router.asPath.includes(str) : router.asPath;
+      },
+      set: setRoute
+    },
+    status: _extends({}, defaultStatus, {
+      loading: (typeof window === "undefined" ? "undefined" : _typeof(window)) !== "object"
+    }),
+    store: _extends({}, initialState, {
+      token: _jsCookie2.default.get("token"),
+      get: getGlobal,
+      set: setGlobal
+    }),
+    subscriptions: []
+  });
+  // Give internal setState function access our store
+  store.setState = setState.bind(store);
+  store.setStatusState = setStatusState.bind(store);
+  // Generate internal act object of executable actions
+  if (actions) {
+    store.act = act.bind(store);
+    store.action = action.bind(store);
+    registerActions.call(store, actions);
+  }
+  // Return subscribe-able hooks
+  return useInternalStore.bind(store);
+
+  function getGlobal(singleKey) {
+    var keys = [].concat(Array.prototype.slice.call(arguments));
+    if (!keys.length) return store.store;
+    if (keys.length === 1) return store.store[singleKey];
+    return keys.reduce(function (res, key) {
+      return Object.assign(res, _defineProperty({}, key, global[key]));
+    }, {});
+  }
+
+  function setGlobal(data) {
+    // Add the new state into our current state
+    store.store = _extends({}, store.store, data, {
+      status: _extends({}, defaultStatus, {
+        update: new Date().getTime()
+      })
+    });
+    // Then fire all subscribed functions in our subscriptions array
+    store.subscriptions.forEach(function (subscription) {
+      subscription(!data ? {} : store.store);
+    });
+    return Promise.resolve(data);
+  }
+
+  function setGlobalHandler(handler) {
+    if ((typeof handler === "undefined" ? "undefined" : _typeof(handler)) !== "object") return;
+    var handlerName = Object.key(handler).shift();
+    handlers[handlerName] = handler[handlerName];
+    return Promise.resolve(handler);
+  }
+
+  function setLoading(loading) {
+    var globalStatus = _extends({}, defaultStatus, { loading: loading });
+    store.status.loading !== loading && setStatusState(globalStatus);
+  }
+
+  function setRoute(name, disableRoute) {
+    var route = init.routes[name] || { link: router.query.redirect || name };
+    return new Promise(function (resolve) {
+      if (disableRoute || router.asPath === (route.link || name)) return resolve(route);
+      return resolve(router.push(route.link, route.link, { shallow: true }));
+    });
+  }
+
+  function handleClear() {
+    var update = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : new Date().getTime();
+
+    store.setStatusState(_extends({}, defaultStatus, {
+      update: update
+    }));
+  }
+
+  function handleConfirm(action) {
+    if (!action || action && typeof store.status.confirm !== "function") return store.setStatusState(_extends({}, defaultStatus, { confirm: action }));
+    store.status.confirm();
+    return store.setStatusState(_extends({}, defaultStatus, { confirm: null }));
+  }
+
+  function handleInfo(data) {
+    store.setStatusState(_extends({}, defaultStatus, {
+      info: data && data.message || JSON.stringify(data)
+    }));
+  }
 }
-
-function useGlobal() {
-  var cfg = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
-  var actions = cfg.actions;
-
-  var globalContext = useContext(context);
-
-  if (actions) useActions(actions, globalContext);
-  return globalContext;
-}
-
-// triggers
-
-function act() {
+/*
+    Internal setState function to manipulate store.state
+    EX: store.setState({ loading: true });
+ */
+function setState(newState) {
   var _this = this;
 
-  var args = [].concat(Array.prototype.slice.call(arguments));
-  var actionName = args.shift();
-  var actions = GlobalProvider.actions;
-
-  // console.log('[ACT]', actionName, args);
-
-  var handleError = function handleError(error) {
-    console.warn(error);
-    return _this && _this.handle && _this.handle.info(error);
-  };
-
-  if (typeof actionName === "function") return actionName.apply(this, arguments);
-
-  if (typeof actionName === "string") {
-    var actFunction = actions[actionName] ? actions[actionName].bind(this).apply(undefined, _toConsumableArray(args)) : getRequestPromise.apply(this, arguments);
-    return (typeof actFunction === "undefined" ? "undefined" : _typeof(actFunction)) === "object" ? actFunction.catch(handleError) : Promise.resolve(actFunction);
-  }
-
-  if (Array.isArray(actionName)) return Promise.all(actionName.map(function (request) {
-    return typeof request === "string" ? act.bind(_this)(request) : (typeof request === "undefined" ? "undefined" : _typeof(request)) === "object" ? getRequestPromise.bind(_this)(null, request) : request;
-  })).catch(handleError);
-
-  return handleError(actionName + " action is missing correct actionName as first parameter");
+  // Add the new state into our current state
+  this.store = _extends({}, this.store, newState);
+  // Then fire all subscribed functions in our subscriptions array
+  this.subscriptions.forEach(function (subscription) {
+    subscription(_this.store);
+  });
 }
 
-function action(actionName) {
-  var actions = GlobalProvider.actions;
-
-  if (typeof actionName !== "string" || !actions[actionName]) return Promise.reject(actionName + " action can not be found");
-
-  return function () {
-    return actions[actionName].apply(this, arguments);
-  };
-}
-
-function getRequestPromise(actionName, request) {
-  var _ref2 = request || {},
-      method = _ref2.method,
-      endpoint = _ref2.endpoint,
-      path = _ref2.path,
-      req = _ref2.req,
-      query = _ref2.query;
-
-  var _ref3 = this.config || {},
-      GQL_URL = _ref3.GQL_URL,
-      WSS_URL = _ref3.WSS_URL,
-      endpoints = _ref3.endpoints;
-
-  console.warn(actionName, endpoint || query && query.replace(/[\n\t]/gm, "").trim().substr(0, 50) || "");
-
-  req = _extends({
-    method: actionName || req && req.method || method || "GET",
-    endpoint: req && req.endpoint || endpoint,
-    path: req && req.path || path || ""
-  }, req || request);
-
-  var token = _jsCookie2.default.get("token");
-
-  switch (req.method) {
-    case "GQL":
-    case "POST":
-    case "GET":
-      var url = req.method === "GQL" ? GQL_URL : endpoints[endpoint] + req.path;
-      return _fetchier2.default[req.method](_extends({ url: url, token: token }, req));
-    case "OPEN":
-      return _fetchier.WS.OPEN(_extends({ url: WSS_URL, token: token }, req), null);
-    case "CLOSE":
-      return _fetchier.WS.CLOSE(_extends({ url: WSS_URL }, req));
-    case "PUT":
-      return (0, _fetchier.PUT)(_extends({}, req));
-    case "SUB":
-      return _fetchier.WS.SUB({ url: req.url || WSS_URL, subscription: req });
-    case "UNSUB":
-      return _fetchier.WS.UNSUB(_extends({ url: WSS_URL }, req));
-  }
-
-  return Promise.reject("Incorrect action " + actionName);
-}
-
-// Global Hooks
-function useActStore(props) {
-  if (!actStore) {
-    var init = (0, _useSubStore2.default)(props, { act: subAct, action: subAction, useSubActions: useSubActions });
-    actStore = init();
-    return actStore;
-  } else {
-    if ((typeof props === "undefined" ? "undefined" : _typeof(props)) === "object") {
-      var actions = props.actions;
-
-      if (actions) useSubActions(actions, actStore);
-      return actStore;
-    } else if (typeof props === "function") {
-      var _init = _useSubStore.useInternalStore.bind(actStore);
-      actStore = _init();
-      var state = actStore || {};
-      var _actions = props(state);
-      if (!actStore.actions) actStore.actions = {};
-      var firstActionName = Object.keys(_actions).shift();
-      if (actStore.actions[firstActionName]) return state;
-      for (var actionName in _actions) {
-        // noinspection JSUnfilteredForInLoop
-        actStore.actions[actionName] = _actions[actionName].bind(state.set);
-      }
-      return state;
-    } else {
-      var _init2 = _useSubStore.useInternalStore.bind(actStore);
-      _init2();
-      return actStore;
-    }
-  }
-}
-/*
-    Internal act object which will hold all executable actions
-    EX: store.act.doSomething(cool);
- */
-/*
-function useActions(fn, store) {
-  console.log("useActions", fn);
-  const state = store || {};
-  const actions = fn(state);
-  if (!actStore.actions) actStore.actions = {};
-  const firstActionName = Object.keys(actions).shift();
-  if (actStore.actions[firstActionName]) return state;
-  for (let actionName in actions) {
-    // noinspection JSUnfilteredForInLoop
-    actStore.actions[actionName] = actions[actionName].bind(state.set);
-  }
-  return state;
-}
- */
-// Global Getters
-function getSubRequestPromise(actionName, request) {
-  var _ref4 = request || {},
-      method = _ref4.method,
-      endpoint = _ref4.endpoint,
-      path = _ref4.path,
-      req = _ref4.req,
-      query = _ref4.query;
-
-  var _ref5 = this.config || {},
-      GQL_URL = _ref5.GQL_URL,
-      WSS_URL = _ref5.WSS_URL,
-      endpoints = _ref5.endpoints;
-
-  console.warn(actionName, endpoint || query && query.replace(/[\n\t]/gm, "").trim().substr(0, 50) || "");
-  req = _extends({
-    method: actionName || req && req.method || method || "GET",
-    endpoint: req && req.endpoint || endpoint,
-    path: req && req.path || path || ""
-  }, req || request);
-  var token = _jsCookie2.default.get("token");
-  switch (req.method) {
-    case "GQL":
-    case "POST":
-    case "GET":
-      var url = req.method === "GQL" ? GQL_URL : endpoints[endpoint] + req.path;
-      return _fetchier2.default[req.method](_extends({ url: url, token: token }, req));
-    case "OPEN":
-      return _fetchier.WS.OPEN(_extends({ url: WSS_URL, token: token }, req), null);
-    case "CLOSE":
-      return _fetchier.WS.CLOSE(_extends({ url: WSS_URL }, req));
-    case "PUT":
-      return (0, _fetchier.PUT)(_extends({}, req));
-    case "SUB":
-      return _fetchier.WS.SUB({ url: req.url || WSS_URL, subscription: req });
-    case "UNSUB":
-      return _fetchier.WS.UNSUB(_extends({ url: WSS_URL }, req));
-  }
-  return Promise.reject("Incorrect action " + actionName);
-}
-
-// Global Registration
-function subAct() {
+function setStatusState(newStatusState) {
   var _this2 = this;
+
+  // Add the new state into our current state
+  this.store = _extends({}, this.store, { status: _extends({}, newStatusState) });
+  // Then fire all subscribed functions in our subscriptions array
+  this.subscriptions.forEach(function (subscription) {
+    subscription(_this2.store);
+  });
+}
+
+function act() {
+  var _this3 = this;
 
   var args = [].concat(Array.prototype.slice.call(arguments));
   var actionName = args.shift();
   var actions = this.actions;
   var handleError = function handleError(error) {
     console.warn(error);
-    return _this2 && _this2.handle && _this2.handle.info(error);
+    return _this3 && _this3.handle && _this3.handle.info(error);
   };
   if (typeof actionName === "function") return actionName.apply(this, arguments);
   if (typeof actionName === "string") {
-    var actFunction = actions[actionName] ? actions[actionName].bind(this).apply(undefined, _toConsumableArray(args)) : getSubRequestPromise.apply(this, arguments);
+    var actFunction = actions[actionName] ? actions[actionName].bind(this).apply(undefined, _toConsumableArray(args)) : getRequestPromise.apply(this, arguments);
     return (typeof actFunction === "undefined" ? "undefined" : _typeof(actFunction)) === "object" ? actFunction.catch(handleError) : Promise.resolve(actFunction);
   }
   if (Array.isArray(actionName)) return Promise.all(actionName.map(function (request) {
-    return typeof request === "string" ? subAct.bind(_this2)(request) : (typeof request === "undefined" ? "undefined" : _typeof(request)) === "object" ? getSubRequestPromise.bind(_this2)(null, request) : request;
+    return typeof request === "string" ? act.bind(_this3)(request) : (typeof request === "undefined" ? "undefined" : _typeof(request)) === "object" ? getRequestPromise.bind(_this3)(null, request) : request;
   })).catch(handleError);
   return handleError(actionName + " action is missing correct actionName as first parameter");
 }
-function subAction(actionName) {
-  var actions = actStore.actions;
+
+function action(actionName) {
+  var actions = this.actions;
   if (typeof actionName !== "string" || !actions[actionName]) return Promise.reject(actionName + " action can not be found");
   return function () {
     return actions[actionName].apply(this, arguments);
   };
 }
-function useSubActions(fn, store) {
-  var state = store || {};
-  var actions = fn(state);
-  if (!actStore.actions) actStore.actions = {};
+
+function registerActions() {
+  var fn = arguments[0];
+  var actions = fn(this);
+  if (!this.actions) this.actions = {};
   var firstActionName = Object.keys(actions).shift();
-  if (actStore.actions[firstActionName]) return state;
+  if (this.actions[firstActionName]) return this;
   for (var actionName in actions) {
-    // noinspection JSUnfilteredForInLoop
-    actStore.actions[actionName] = actions[actionName].bind(state.set);
+    this.actions[actionName] = actions[actionName].bind(this.set);
   }
-  return state;
+  return this;
+}
+
+function getRequestPromise(actionName, request) {
+  var _ref = request || {},
+      method = _ref.method,
+      endpoint = _ref.endpoint,
+      path = _ref.path,
+      req = _ref.req,
+      query = _ref.query;
+
+  var _ref2 = this.config || {},
+      GQL_URL = _ref2.GQL_URL,
+      WSS_URL = _ref2.WSS_URL,
+      endpoints = _ref2.endpoints;
+
+  console.warn(actionName, endpoint || query && query.replace(/[\n\t]/gm, "").trim().substr(0, 50) || "");
+  req = _extends({
+    method: actionName || req && req.method || method || "GET",
+    endpoint: req && req.endpoint || endpoint,
+    path: req && req.path || path || ""
+  }, req || request);
+  var token = _jsCookie2.default.get("token");
+  switch (req.method) {
+    case "GQL":
+    case "POST":
+    case "GET":
+      var url = req.method === "GQL" ? GQL_URL : endpoints[endpoint] + req.path;
+      return _fetchier2.default[req.method](_extends({ url: url, token: token }, req));
+    case "OPEN":
+      return _fetchier.WS.OPEN(_extends({ url: WSS_URL, token: token }, req), null);
+    case "CLOSE":
+      return _fetchier.WS.CLOSE(_extends({ url: WSS_URL }, req));
+    case "PUT":
+      return (0, _fetchier.PUT)(_extends({}, req));
+    case "SUB":
+      return _fetchier.WS.SUB({ url: req.url || WSS_URL, subscription: req });
+    case "UNSUB":
+      return _fetchier.WS.UNSUB(_extends({ url: WSS_URL }, req));
+  }
+  return Promise.reject("Incorrect action " + actionName);
+}
+/*
+    Internal useInternalStore hooks to handle component subscriptions
+    when it is mounted and unmounted.
+ */
+function useInternalStore() {
+  var _this4 = this;
+
+  // Get setState function from useState
+  var newSubscription = (0, _react.useState)()[1];
+  (0, _react.useEffect)(function () {
+    // Add setState function to our subscriptions array on component mount
+    _this4.subscriptions.push(newSubscription);
+    // Remove setState function from subscriptions array on component unmount
+    return function () {
+      if (!_this4.subcriptions) return console.log("useInternalStore", _this4);
+      _this4.subcriptions = _this4.subcriptions.filter(function (subscription) {
+        return subscription !== newSubscription;
+      });
+    };
+  }, []);
+  // Return subscribe-able hooks
+  return this;
 }
