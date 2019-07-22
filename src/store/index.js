@@ -94,7 +94,7 @@ function useStore(args) {
     if (!keys.length) return store.store;
     if (keys.length === 1) return store.store[singleKey];
     return keys.reduce(
-      (res, key) => Object.assign(res, { [key]: global[key] }),
+      (res, key) => Object.assign(res, { [key]: store.store[key] }),
       {}
     );
   }
@@ -103,15 +103,15 @@ function useStore(args) {
     // Add the new state into our current state
     store.store = {
       ...store.store,
-      ...data,
-      status: {
-        ...defaultStatus,
-        update: new Date().getTime()
-      }
+      ...data
+    };
+    store.status = {
+      ...defaultStatus,
+      update: new Date().getTime()
     };
     // Then fire all subscribed functions in our subscriptions array
     store.subscriptions.forEach(subscription => {
-      subscription(!data ? {} : store.store);
+      subscription(!data ? {} : store);
     });
     return Promise.resolve(data);
   }
@@ -173,10 +173,10 @@ function setState(newState) {
 
 function setStatusState(newStatusState) {
   // Add the new state into our current state
-  this.store = { ...this.store, status: { ...newStatusState } };
+  this.status = { ...this.status, ...newStatusState };
   // Then fire all subscribed functions in our subscriptions array
   this.subscriptions.forEach(subscription => {
-    subscription(this.store);
+    subscription(this.status);
   });
 }
 
@@ -240,12 +240,12 @@ function getRequestPromise(actionName, request) {
   console.warn(
     actionName,
     endpoint ||
-    (query &&
-      query
-        .replace(/[\n\t]/gm, "")
-        .trim()
-        .substr(0, 50)) ||
-    ""
+      (query &&
+        query
+          .replace(/[\n\t]/gm, "")
+          .trim()
+          .substr(0, 50)) ||
+      ""
   );
   req = {
     method: actionName || (req && req.method) || method || "GET",
@@ -286,8 +286,8 @@ function useInternalStore() {
     this.subscriptions.push(newSubscription);
     // Remove setState function from subscriptions array on component unmount
     return () => {
-      if (!this.subcriptions) return console.log("useInternalStore", this);
-      this.subcriptions = this.subcriptions.filter(
+      if (!this.subscriptions) return console.log("useInternalStore", this);
+      this.subscriptions = this.subscriptions.filter(
         subscription => subscription !== newSubscription
       );
     };

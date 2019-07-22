@@ -124,20 +124,19 @@ function useStore(args) {
     if (!keys.length) return store.store;
     if (keys.length === 1) return store.store[singleKey];
     return keys.reduce(function (res, key) {
-      return Object.assign(res, _defineProperty({}, key, global[key]));
+      return Object.assign(res, _defineProperty({}, key, store.store[key]));
     }, {});
   }
 
   function setGlobal(data) {
     // Add the new state into our current state
-    store.store = _extends({}, store.store, data, {
-      status: _extends({}, defaultStatus, {
-        update: new Date().getTime()
-      })
+    store.store = _extends({}, store.store, data);
+    store.status = _extends({}, defaultStatus, {
+      update: new Date().getTime()
     });
     // Then fire all subscribed functions in our subscriptions array
     store.subscriptions.forEach(function (subscription) {
-      subscription(!data ? {} : store.store);
+      subscription(!data ? {} : store);
     });
     return Promise.resolve(data);
   }
@@ -201,10 +200,10 @@ function setStatusState(newStatusState) {
   var _this2 = this;
 
   // Add the new state into our current state
-  this.store = _extends({}, this.store, { status: _extends({}, newStatusState) });
+  this.status = _extends({}, this.status, newStatusState);
   // Then fire all subscribed functions in our subscriptions array
   this.subscriptions.forEach(function (subscription) {
-    subscription(_this2.store);
+    subscription(_this2.status);
   });
 }
 
@@ -302,8 +301,8 @@ function useInternalStore() {
     _this4.subscriptions.push(newSubscription);
     // Remove setState function from subscriptions array on component unmount
     return function () {
-      if (!_this4.subcriptions) return console.log("useInternalStore", _this4);
-      _this4.subcriptions = _this4.subcriptions.filter(function (subscription) {
+      if (!_this4.subscriptions) return console.log("useInternalStore", _this4);
+      _this4.subscriptions = _this4.subscriptions.filter(function (subscription) {
         return subscription !== newSubscription;
       });
     };
