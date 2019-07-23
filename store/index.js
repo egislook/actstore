@@ -3,10 +3,15 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
+exports.ActStore = undefined;
 
 var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
 
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
+
+exports.Memo = Memo;
+exports.useMemoize = useMemoize;
+exports.default = useActStore;
 
 var _react = require("react");
 
@@ -34,45 +39,86 @@ var defaultStatus = {
   update: null
 };
 
-exports.default = function (args) {
+var ActStore = exports.ActStore = function ActStore(props) {
+  var _useActStore = useActStore(props),
+      act = _useActStore.act;
+
+  (0, _react.useEffect)(function () {
+    act("APP_INIT");
+    console.log("actStore initialized");
+  }, []);
+  return null;
+};
+
+/*
+  Cleaner function to memoize child components,
+  only state change in the props will cause a re-render
+  EX: useMemoize(Component, props);
+ */
+function Memo(_ref) {
+  var children = _ref.children,
+      triggers = _ref.triggers;
+
+  if (triggers) {
+    // noinspection JSCheckFunctionSignatures
+    return children.map(function (child, index) {
+      return _react2.default.useMemo(function () {
+        return child;
+      }, triggers ? Object.values(triggers[index]) : Object.values(child.props));
+    });
+  } else {
+    // noinspection JSCheckFunctionSignatures
+    return children.map(function (child) {
+      return _react2.default.useMemo(function () {
+        return child;
+      }, child.props.triggers ? Object.values(child.props.triggers) : Object.values(child.props));
+    });
+  }
+}
+
+function useMemoize(Component, props, triggers) {
+  // noinspection JSCheckFunctionSignatures
+  return _react2.default.useMemo(function () {
+    return _react2.default.createElement(Component, props);
+  }, triggers ? Object.values(triggers) : Object.values(props));
+}
+
+function useActStore(args) {
   if (!init) {
     init = useStore(args);
-    var store = init();
-    store.act("APP_INIT");
-    return store;
+    return init();
   }
 
   if ((typeof args === "undefined" ? "undefined" : _typeof(args)) === "object") {
-    var _store = init();
-    var actions = args.actions(_store);
-    if (!_store.actions) _store.actions = {};
+    var store = init();
+    var actions = args.actions(store);
+    if (!store.actions) store.actions = {};
     var firstActionName = Object.keys(actions).shift();
-    if (_store.actions[firstActionName]) return _store;
+    if (store.actions[firstActionName]) return store;
     for (var actionName in actions) {
-      _store.actions[actionName] = actions[actionName].bind(_store.set);
+      store.actions[actionName] = actions[actionName].bind(store.set);
+    }
+    return store;
+  }
+
+  if (typeof args === "function") {
+    var _store = init();
+    var _actions = args(_store);
+    if (!_store.actions) _store.actions = {};
+    var _firstActionName = Object.keys(_actions).shift();
+    if (_store.actions[_firstActionName]) return _store;
+    for (var _actionName in _actions) {
+      _store.actions[_actionName] = _actions[_actionName].bind(_store.set);
     }
     return _store;
   }
 
-  if (typeof args === "function") {
-    var _store2 = init();
-    var _actions = args(_store2);
-    if (!_store2.actions) _store2.actions = {};
-    var _firstActionName = Object.keys(_actions).shift();
-    if (_store2.actions[_firstActionName]) return _store2;
-    for (var _actionName in _actions) {
-      _store2.actions[_actionName] = _actions[_actionName].bind(_store2.set);
-    }
-    return _store2;
-  }
-
   return init();
 };
+
 /*
     This is our useActStore() hooks
  */
-
-
 function useStore(args) {
   var actions = args.actions,
       config = args.config,
@@ -108,6 +154,7 @@ function useStore(args) {
     subscriptions: []
   });
   // Give internal setState function access our store
+  store.resetState = resetState.bind(store, initialState);
   store.setState = setState.bind(store);
   store.setStatusState = setStatusState.bind(store);
   // Generate internal act object of executable actions
@@ -130,14 +177,17 @@ function useStore(args) {
 
   function setGlobal(data) {
     // Add the new state into our current state
-    store.store = _extends({}, store.store, data);
-    store.status = _extends({}, defaultStatus, {
-      update: new Date().getTime()
-    });
-    // Then fire all subscribed functions in our subscriptions array
-    store.subscriptions.forEach(function (subscription) {
-      subscription(!data ? {} : store);
-    });
+    if (data) {
+      store.setState(data);
+      store.setStatusState(_extends({}, defaultStatus, {
+        update: new Date().getTime()
+      }));
+    } else {
+      store.resetState();
+      store.setStatusState(_extends({}, defaultStatus, {
+        update: new Date().getTime()
+      }));
+    }
     return Promise.resolve(data);
   }
 
@@ -150,11 +200,13 @@ function useStore(args) {
 
   function setLoading(loading) {
     var globalStatus = _extends({}, defaultStatus, { loading: loading });
-    store.status.loading !== loading && setStatusState(globalStatus);
+    store.status.loading !== loading && store.setStatusState(globalStatus);
   }
 
   function setRoute(name, disableRoute) {
-    var route = init.routes[name] || { link: router.query.redirect || name };
+    var route = init.routes[name] || {
+      link: router.query.redirect || name
+    };
     return new Promise(function (resolve) {
       if (disableRoute || router.asPath === (route.link || name)) return resolve(route);
       return resolve(router.push(route.link, route.link, { shallow: true }));
@@ -181,41 +233,57 @@ function useStore(args) {
     }));
   }
 }
+
 /*
     Internal setState function to manipulate store.state
     EX: store.setState({ loading: true });
  */
-function setState(newState) {
+function resetState() {
   var _this = this;
 
-  // Add the new state into our current state
-  this.store = _extends({}, this.store, newState);
+  var initialState = arguments[0];
+  this.store = _extends({}, initialState, {
+    token: _jsCookie2.default.get("token"),
+    get: this.store.get,
+    set: this.store.set
+  });
   // Then fire all subscribed functions in our subscriptions array
   this.subscriptions.forEach(function (subscription) {
     subscription(_this.store);
   });
 }
 
-function setStatusState(newStatusState) {
+function setState(newState) {
   var _this2 = this;
+
+  // Add the new state into our current state
+  this.store = _extends({}, this.store, newState);
+  // Then fire all subscribed functions in our subscriptions array
+  this.subscriptions.forEach(function (subscription) {
+    subscription(_this2.store);
+  });
+}
+
+function setStatusState(newStatusState) {
+  var _this3 = this;
 
   // Add the new state into our current state
   this.status = _extends({}, this.status, newStatusState);
   // Then fire all subscribed functions in our subscriptions array
   this.subscriptions.forEach(function (subscription) {
-    subscription(_this2.status);
+    subscription(_this3.status);
   });
 }
 
 function act() {
-  var _this3 = this;
+  var _this4 = this;
 
   var args = [].concat(Array.prototype.slice.call(arguments));
   var actionName = args.shift();
   var actions = this.actions;
   var handleError = function handleError(error) {
     console.warn(error);
-    return _this3 && _this3.handle && _this3.handle.info(error);
+    return _this4 && _this4.handle && _this4.handle.info(error);
   };
   if (typeof actionName === "function") return actionName.apply(this, arguments);
   if (typeof actionName === "string") {
@@ -223,7 +291,7 @@ function act() {
     return (typeof actFunction === "undefined" ? "undefined" : _typeof(actFunction)) === "object" ? actFunction.catch(handleError) : Promise.resolve(actFunction);
   }
   if (Array.isArray(actionName)) return Promise.all(actionName.map(function (request) {
-    return typeof request === "string" ? act.bind(_this3)(request) : (typeof request === "undefined" ? "undefined" : _typeof(request)) === "object" ? getRequestPromise.bind(_this3)(null, request) : request;
+    return typeof request === "string" ? act.bind(_this4)(request) : (typeof request === "undefined" ? "undefined" : _typeof(request)) === "object" ? getRequestPromise.bind(_this4)(null, request) : request;
   })).catch(handleError);
   return handleError(actionName + " action is missing correct actionName as first parameter");
 }
@@ -249,17 +317,17 @@ function registerActions() {
 }
 
 function getRequestPromise(actionName, request) {
-  var _ref = request || {},
-      method = _ref.method,
-      endpoint = _ref.endpoint,
-      path = _ref.path,
-      req = _ref.req,
-      query = _ref.query;
+  var _ref2 = request || {},
+      method = _ref2.method,
+      endpoint = _ref2.endpoint,
+      path = _ref2.path,
+      req = _ref2.req,
+      query = _ref2.query;
 
-  var _ref2 = this.config || {},
-      GQL_URL = _ref2.GQL_URL,
-      WSS_URL = _ref2.WSS_URL,
-      endpoints = _ref2.endpoints;
+  var _ref3 = this.config || {},
+      GQL_URL = _ref3.GQL_URL,
+      WSS_URL = _ref3.WSS_URL,
+      endpoints = _ref3.endpoints;
 
   console.warn(actionName, endpoint || query && query.replace(/[\n\t]/gm, "").trim().substr(0, 50) || "");
   req = _extends({
@@ -287,22 +355,23 @@ function getRequestPromise(actionName, request) {
   }
   return Promise.reject("Incorrect action " + actionName);
 }
+
 /*
     Internal useInternalStore hooks to handle component subscriptions
     when it is mounted and unmounted.
  */
 function useInternalStore() {
-  var _this4 = this;
+  var _this5 = this;
 
   // Get setState function from useState
   var newSubscription = (0, _react.useState)()[1];
   (0, _react.useEffect)(function () {
     // Add setState function to our subscriptions array on component mount
-    _this4.subscriptions.push(newSubscription);
+    _this5.subscriptions.push(newSubscription);
     // Remove setState function from subscriptions array on component unmount
     return function () {
-      if (!_this4.subscriptions) return console.log("useInternalStore", _this4);
-      _this4.subscriptions = _this4.subscriptions.filter(function (subscription) {
+      if (!_this5.subscriptions) return console.log("useInternalStore", _this5);
+      _this5.subscriptions = _this5.subscriptions.filter(function (subscription) {
         return subscription !== newSubscription;
       });
     };

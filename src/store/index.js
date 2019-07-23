@@ -10,12 +10,54 @@ const defaultStatus = {
   update: null
 };
 
-export default args => {
+export const ActStore = (props) => {
+	const { act } = useActStore(props);
+	useEffect(() => {
+		act("APP_INIT");
+		console.log("actStore initialized");
+	}, []);
+	return null
+};
+
+/*
+  Cleaner function to memoize child components,
+  only state change in the props will cause a re-render
+  EX: useMemoize(Component, props);
+ */
+export function Memo({ children, triggers }) {
+	if (triggers) {
+		// noinspection JSCheckFunctionSignatures
+		return children.map((child, index) =>
+			React.useMemo(
+				() => child,
+				triggers ? Object.values(triggers[index]) : Object.values(child.props)
+			)
+		);
+	} else {
+		// noinspection JSCheckFunctionSignatures
+		return children.map(child =>
+			React.useMemo(
+				() => child,
+				child.props.triggers
+					? Object.values(child.props.triggers)
+					: Object.values(child.props)
+			)
+		);
+	}
+}
+
+export function useMemoize(Component, props, triggers) {
+	// noinspection JSCheckFunctionSignatures
+	return React.useMemo(
+		() => React.createElement(Component, props),
+		triggers ? Object.values(triggers) : Object.values(props)
+	);
+}
+
+export default function useActStore(args) {
   if (!init) {
     init = useStore(args);
-    const store = init();
-    store.act("APP_INIT");
-    return store;
+    return init();
   }
 
   if (typeof args === "object") {
@@ -44,6 +86,7 @@ export default args => {
 
   return init();
 };
+
 /*
     This is our useActStore() hooks
  */
@@ -78,6 +121,7 @@ function useStore(args) {
     subscriptions: []
   };
   // Give internal setState function access our store
+  store.resetState = resetState.bind(store, initialState);
   store.setState = setState.bind(store);
   store.setStatusState = setStatusState.bind(store);
   // Generate internal act object of executable actions
@@ -101,18 +145,19 @@ function useStore(args) {
 
   function setGlobal(data) {
     // Add the new state into our current state
-    store.store = {
-      ...store.store,
-      ...data
-    };
-    store.status = {
-      ...defaultStatus,
-      update: new Date().getTime()
-    };
-    // Then fire all subscribed functions in our subscriptions array
-    store.subscriptions.forEach(subscription => {
-      subscription(!data ? {} : store);
-    });
+    if (data) {
+      store.setState(data);
+      store.setStatusState({
+        ...defaultStatus,
+        update: new Date().getTime()
+      });
+    } else {
+      store.resetState();
+      store.setStatusState({
+        ...defaultStatus,
+        update: new Date().getTime()
+      });
+    }
     return Promise.resolve(data);
   }
 
@@ -125,11 +170,13 @@ function useStore(args) {
 
   function setLoading(loading) {
     const globalStatus = { ...defaultStatus, loading };
-    store.status.loading !== loading && setStatusState(globalStatus);
+    store.status.loading !== loading && store.setStatusState(globalStatus);
   }
 
   function setRoute(name, disableRoute) {
-    const route = init.routes[name] || { link: router.query.redirect || name };
+    const route = init.routes[name] || {
+      link: router.query.redirect || name
+    };
     return new Promise(resolve => {
       if (disableRoute || router.asPath === (route.link || name))
         return resolve(route);
@@ -158,10 +205,25 @@ function useStore(args) {
     });
   }
 }
+
 /*
     Internal setState function to manipulate store.state
     EX: store.setState({ loading: true });
  */
+function resetState() {
+	const initialState = arguments[0];
+  this.store = {
+  	...initialState,
+		token: Cookies.get("token"),
+    get: this.store.get,
+    set: this.store.set
+  };
+  // Then fire all subscribed functions in our subscriptions array
+  this.subscriptions.forEach(subscription => {
+    subscription(this.store);
+  });
+}
+
 function setState(newState) {
   // Add the new state into our current state
   this.store = { ...this.store, ...newState };
@@ -274,6 +336,7 @@ function getRequestPromise(actionName, request) {
   }
   return Promise.reject("Incorrect action " + actionName);
 }
+
 /*
     Internal useInternalStore hooks to handle component subscriptions
     when it is mounted and unmounted.
