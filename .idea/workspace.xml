@@ -2,15 +2,8 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="67136289-e0e8-4cb3-9329-c19399d1e2d2" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/trash/package.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/cli/index.js" beforeDir="false" afterPath="$PROJECT_DIR$/cli/index.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/cli/index.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/cli/index.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/store/index.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/store/index.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/store/script.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/store/index.js" beforeDir="false" afterPath="$PROJECT_DIR$/store/index.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/store/script.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -163,7 +156,7 @@
       <workItem from="1563942810604" duration="1716000" />
       <workItem from="1563949361437" duration="1573000" />
       <workItem from="1563951011515" duration="5739000" />
-      <workItem from="1564021931471" duration="10433000" />
+      <workItem from="1564021931471" duration="14762000" />
     </task>
     <servers />
   </component>
