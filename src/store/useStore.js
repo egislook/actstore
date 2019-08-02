@@ -81,7 +81,7 @@ export default (props, { act, action, useActions }) => {
   
   function setLoading(loading){
     const globalStatus = { ...defaultStatus, loading };
-    status.loading !== loading && setGlobalStatus(globalStatus);
+    store.status.loading !== loading && setGlobalStatus(globalStatus);
   }
   
   function setRoute(name, disableRoute){
@@ -109,7 +109,7 @@ export default (props, { act, action, useActions }) => {
     if(!action || (action && typeof status.confirm !== 'function'))
       return setGlobalStatus({ ...defaultStatus, confirm: action });
     
-    status.confirm();
+    store.status.confirm();
     return setGlobalStatus({ ...defaultStatus, confirm: null });
   }
   
