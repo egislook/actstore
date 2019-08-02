@@ -1,4 +1,4 @@
-"use strict";
+'use strict';
 
 Object.defineProperty(exports, "__esModule", {
   value: true
@@ -11,11 +11,11 @@ var _extends = Object.assign || function (target) { for (var i = 1; i < argument
 
 var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
 
-var _react = require("react");
+var _react = require('react');
 
 var _react2 = _interopRequireDefault(_react);
 
-var _jsCookie = require("js-cookie");
+var _jsCookie = require('js-cookie');
 
 var _jsCookie2 = _interopRequireDefault(_jsCookie);
 
@@ -28,12 +28,11 @@ var DEFAULT_STATUS = {
   info: null,
   confirm: null,
   update: null
-};
 
-/*
-    This is our useActStore() hooks
- */
-function useSubStore(props, _ref) {
+  /*
+      This is our useActStore() hooks
+   */
+};function useSubStore(props, _ref) {
   var act = _ref.act,
       action = _ref.action;
   var actions = props.actions,
@@ -50,13 +49,13 @@ function useSubStore(props, _ref) {
   };
 
   var _useState = (0, _react.useState)(_extends({}, DEFAULT_STATUS, {
-    loading: (typeof window === "undefined" ? "undefined" : _typeof(window)) !== "object"
+    loading: (typeof window === 'undefined' ? 'undefined' : _typeof(window)) !== 'object'
   })),
       _useState2 = _slicedToArray(_useState, 2),
       status = _useState2[0],
       setGlobalStatus = _useState2[1];
 
-  var _useState3 = (0, _react.useState)({ token: _jsCookie2.default.get("token") }),
+  var _useState3 = (0, _react.useState)({ token: _jsCookie2.default.get('token') }),
       _useState4 = _slicedToArray(_useState3, 2),
       global = _useState4[0],
       setGlobalStore = _useState4[1];
@@ -78,9 +77,8 @@ function useSubStore(props, _ref) {
       set: setStore
     }),
     subscriptions: []
-  });
-  // Give internal setState function access our store
-  store.setState = setState.bind(store);
+    // Give internal setState function access our store
+  });store.setState = setState.bind(store);
   // Generate internal act object of executable actions
   store.act = act.bind(store);
   store.action = action.bind(store);
@@ -99,7 +97,7 @@ function useSubStore(props, _ref) {
   }
   // Setters
   function setGlobalHandler(handler) {
-    if ((typeof handler === "undefined" ? "undefined" : _typeof(handler)) !== "object") return;
+    if ((typeof handler === 'undefined' ? 'undefined' : _typeof(handler)) !== 'object') return;
     var handlerName = Object.key(handler).shift();
     handlers[handlerName] = handler[handlerName];
     return Promise.resolve(handler);
@@ -137,7 +135,7 @@ function useSubStore(props, _ref) {
     setGlobalStatus(_extends({}, DEFAULT_STATUS, { update: update }));
   }
   function handleConfirm(action) {
-    if (!action || action && typeof status.confirm !== "function") return setGlobalStatus(_extends({}, DEFAULT_STATUS, { confirm: action }));
+    if (!action || action && typeof status.confirm !== 'function') return setGlobalStatus(_extends({}, DEFAULT_STATUS, { confirm: action }));
     status.confirm();
     return setGlobalStatus(_extends({}, DEFAULT_STATUS, { confirm: null }));
   }
@@ -183,8 +181,8 @@ function useInternalStore() {
   // noinspection JSCheckFunctionSignatures
   var newSubscription = (0, _react.useState)()[1];
   (0, _react.useEffect)(function () {
-    store.act("APP_INIT");
-  }, [store.cookies.get("token")]);
+    store.act('APP_INIT');
+  }, [store.cookies.get('token')]);
   (0, _react.useEffect)(function () {
     // Add setState function to our subscriptions array on component mount
     store.subscriptions.push(newSubscription);

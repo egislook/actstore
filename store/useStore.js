@@ -31,7 +31,9 @@ exports.default = function (props, _ref) {
       actions = props.actions,
       config = props.config;
 
-  var _useState = (0, _react.useState)(_extends({}, defaultStatus, { loading: (typeof window === 'undefined' ? 'undefined' : _typeof(window)) !== 'object' })),
+  var _useState = (0, _react.useState)(_extends({}, defaultStatus, {
+    loading: (typeof window === 'undefined' ? 'undefined' : _typeof(window)) !== 'object'
+  })),
       _useState2 = _slicedToArray(_useState, 2),
       status = _useState2[0],
       setGlobalStatus = _useState2[1];
@@ -94,7 +96,6 @@ exports.default = function (props, _ref) {
   // Setters
 
   function setGlobal(data, noUpdate) {
-
     if (data) {
       for (var key in data) {
         global[key] = data[key];
@@ -149,6 +150,8 @@ exports.default = function (props, _ref) {
   }
 
   function handleInfo(data) {
-    return setGlobalStatus(_extends({}, defaultStatus, { info: data && data.message || JSON.stringify(data) }));
+    return setGlobalStatus(_extends({}, defaultStatus, {
+      info: data && data.message || JSON.stringify(data)
+    }));
   }
 };

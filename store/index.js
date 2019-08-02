@@ -1,4 +1,4 @@
-"use strict";
+'use strict';
 
 Object.defineProperty(exports, "__esModule", {
   value: true
@@ -13,15 +13,15 @@ exports.Memo = Memo;
 exports.useMemoize = useMemoize;
 exports.default = useActStore;
 
-var _react = require("react");
+var _react = require('react');
 
 var _react2 = _interopRequireDefault(_react);
 
-var _fetchier = require("fetchier");
+var _fetchier = require('fetchier');
 
 var _fetchier2 = _interopRequireDefault(_fetchier);
 
-var _jsCookie = require("js-cookie");
+var _jsCookie = require('js-cookie');
 
 var _jsCookie2 = _interopRequireDefault(_jsCookie);
 
@@ -44,8 +44,8 @@ var ActStore = exports.ActStore = function ActStore(props) {
       act = _useActStore.act;
 
   (0, _react.useEffect)(function () {
-    act("APP_INIT");
-    console.log("actStore initialized");
+    act('APP_INIT');
+    console.log('actStore initialized');
   }, []);
   return null;
 };
@@ -89,11 +89,14 @@ function useActStore(args) {
     return init();
   }
 
-  if ((typeof args === "undefined" ? "undefined" : _typeof(args)) === "object") {
+  if ((typeof args === 'undefined' ? 'undefined' : _typeof(args)) === 'object') {
     var store = init();
     var actions = args.actions(store);
     if (!store.actions) store.actions = {};
-    var firstActionName = Object.keys(actions).shift();
+    // TODO!!!
+    // Add flag not to allow overwrite actions.
+    // For development purpose its better to overwrite cause updated actions are getting stored even if they are with the same name.
+    var firstActionName = false && Object.keys(actions).shift();
     if (store.actions[firstActionName]) return store;
     for (var actionName in actions) {
       store.actions[actionName] = actions[actionName].bind(store.set);
@@ -101,7 +104,7 @@ function useActStore(args) {
     return store;
   }
 
-  if (typeof args === "function") {
+  if (typeof args === 'function') {
     var _store = init();
     var _actions = args(_store);
     if (!_store.actions) _store.actions = {};
@@ -114,7 +117,7 @@ function useActStore(args) {
   }
 
   return init();
-};
+}
 
 /*
     This is our useActStore() hooks
@@ -144,17 +147,16 @@ function useStore(args) {
       set: setRoute
     },
     status: _extends({}, defaultStatus, {
-      loading: (typeof window === "undefined" ? "undefined" : _typeof(window)) !== "object"
+      loading: (typeof window === 'undefined' ? 'undefined' : _typeof(window)) !== 'object'
     }),
     store: _extends({}, initialState, {
-      token: _jsCookie2.default.get("token"),
+      token: _jsCookie2.default.get('token'),
       get: getGlobal,
       set: setGlobal
     }),
     subscriptions: []
-  });
-  // Give internal setState function access our store
-  store.resetState = resetState.bind(store, initialState);
+    // Give internal setState function access our store
+  });store.resetState = resetState.bind(store, initialState);
   store.setState = setState.bind(store);
   store.setStatusState = setStatusState.bind(store);
   // Generate internal act object of executable actions
@@ -192,7 +194,7 @@ function useStore(args) {
   }
 
   function setGlobalHandler(handler) {
-    if ((typeof handler === "undefined" ? "undefined" : _typeof(handler)) !== "object") return;
+    if ((typeof handler === 'undefined' ? 'undefined' : _typeof(handler)) !== 'object') return;
     var handlerName = Object.key(handler).shift();
     handlers[handlerName] = handler[handlerName];
     return Promise.resolve(handler);
@@ -222,7 +224,7 @@ function useStore(args) {
   }
 
   function handleConfirm(action) {
-    if (!action || action && typeof store.status.confirm !== "function") return store.setStatusState(_extends({}, defaultStatus, { confirm: action }));
+    if (!action || action && typeof store.status.confirm !== 'function') return store.setStatusState(_extends({}, defaultStatus, { confirm: action }));
     store.status.confirm();
     return store.setStatusState(_extends({}, defaultStatus, { confirm: null }));
   }
@@ -243,12 +245,11 @@ function resetState() {
 
   var initialState = arguments[0];
   this.store = _extends({}, initialState, {
-    token: _jsCookie2.default.get("token"),
+    token: _jsCookie2.default.get('token'),
     get: this.store.get,
     set: this.store.set
-  });
-  // Then fire all subscribed functions in our subscriptions array
-  this.subscriptions.forEach(function (subscription) {
+    // Then fire all subscribed functions in our subscriptions array
+  });this.subscriptions.forEach(function (subscription) {
     subscription(_this.store);
   });
 }
@@ -282,23 +283,24 @@ function act() {
   var actionName = args.shift();
   var actions = this.actions;
   var handleError = function handleError(error) {
-    console.warn(error);
-    return _this4 && _this4.init && _this4.init.handle && _this4.init.handle.info && _this4.init.handle.info(error) || _this4.handle && _this4.handle.info(error);
+    // console.warn(error);
+    console.log('ACTSTORE', error);
+    return actions['APP_INFO'] ? actions['APP_INFO'].bind(_this4)(error) : _this4 && _this4.handle && _this4.handle.info(error);
   };
-  if (typeof actionName === "function") return actionName.apply(this, arguments);
-  if (typeof actionName === "string") {
+  if (typeof actionName === 'function') return actionName.apply(this, arguments);
+  if (typeof actionName === 'string') {
     var actFunction = actions[actionName] ? actions[actionName].bind(this).apply(undefined, _toConsumableArray(args)) : getRequestPromise.apply(this, arguments);
-    return (typeof actFunction === "undefined" ? "undefined" : _typeof(actFunction)) === "object" ? actFunction.catch(handleError) : Promise.resolve(actFunction);
+    return (typeof actFunction === 'undefined' ? 'undefined' : _typeof(actFunction)) === 'object' ? actFunction.catch(handleError) : Promise.resolve(actFunction);
   }
   if (Array.isArray(actionName)) return Promise.all(actionName.map(function (request) {
-    return typeof request === "string" ? act.bind(_this4)(request) : (typeof request === "undefined" ? "undefined" : _typeof(request)) === "object" ? getRequestPromise.bind(_this4)(null, request) : request;
+    return typeof request === 'string' ? act.bind(_this4)(request) : (typeof request === 'undefined' ? 'undefined' : _typeof(request)) === 'object' ? getRequestPromise.bind(_this4)(null, request) : request;
   })).catch(handleError);
-  return handleError(actionName + " action is missing correct actionName as first parameter");
+  return handleError(actionName + ' action is missing correct actionName as first parameter');
 }
 
 function action(actionName) {
   var actions = this.actions;
-  if (typeof actionName !== "string" || !actions[actionName]) return Promise.reject(actionName + " action can not be found");
+  if (typeof actionName !== 'string' || !actions[actionName]) return Promise.reject(actionName + ' action can not be found');
   return function () {
     return actions[actionName].apply(this, arguments);
   };
@@ -329,31 +331,31 @@ function getRequestPromise(actionName, request) {
       WSS_URL = _ref3.WSS_URL,
       endpoints = _ref3.endpoints;
 
-  console.warn(actionName, endpoint || query && query.replace(/[\n\t]/gm, "").trim().substr(0, 50) || "");
+  console.warn(actionName, endpoint || query && query.replace(/[\n\t]/gm, '').trim().substr(0, 50) || '');
   req = _extends({
-    method: actionName || req && req.method || method || "GET",
+    method: actionName || req && req.method || method || 'GET',
     endpoint: req && req.endpoint || endpoint,
-    path: req && req.path || path || ""
+    path: req && req.path || path || ''
   }, req || request);
-  var token = _jsCookie2.default.get("token");
+  var token = _jsCookie2.default.get('token');
   switch (req.method) {
-    case "GQL":
-    case "POST":
-    case "GET":
-      var url = req.method === "GQL" ? GQL_URL : endpoints[endpoint] + req.path;
+    case 'GQL':
+    case 'POST':
+    case 'GET':
+      var url = req.method === 'GQL' ? GQL_URL : endpoints[endpoint] + req.path;
       return _fetchier2.default[req.method](_extends({ url: url, token: token }, req));
-    case "OPEN":
+    case 'OPEN':
       return _fetchier.WS.OPEN(_extends({ url: WSS_URL, token: token }, req), null);
-    case "CLOSE":
+    case 'CLOSE':
       return _fetchier.WS.CLOSE(_extends({ url: WSS_URL }, req));
-    case "PUT":
+    case 'PUT':
       return (0, _fetchier.PUT)(_extends({}, req));
-    case "SUB":
+    case 'SUB':
       return _fetchier.WS.SUB({ url: req.url || WSS_URL, subscription: req });
-    case "UNSUB":
+    case 'UNSUB':
       return _fetchier.WS.UNSUB(_extends({ url: WSS_URL }, req));
   }
-  return Promise.reject("Incorrect action " + actionName);
+  return Promise.reject('Incorrect action ' + actionName);
 }
 
 /*
@@ -370,7 +372,7 @@ function useInternalStore() {
     _this5.subscriptions.push(newSubscription);
     // Remove setState function from subscriptions array on component unmount
     return function () {
-      if (!_this5.subscriptions) return console.log("useInternalStore", _this5);
+      if (!_this5.subscriptions) return console.log('useInternalStore', _this5);
       _this5.subscriptions = _this5.subscriptions.filter(function (subscription) {
         return subscription !== newSubscription;
       });
