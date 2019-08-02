@@ -248,7 +248,7 @@ function act() {
   const actions = this.actions;
   const handleError = error => {
     console.warn(error);
-    return this && this.handle && this.handle.info(error);
+    return this && (this.init && this.init.handle && this.init.handle.info && this.init.handle.info(error)) || (this.handle && this.handle.info(error));
   };
   if (typeof actionName === "function")
     return actionName.apply(this, arguments);

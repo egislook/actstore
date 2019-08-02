@@ -283,7 +283,7 @@ function act() {
   var actions = this.actions;
   var handleError = function handleError(error) {
     console.warn(error);
-    return _this4 && _this4.handle && _this4.handle.info(error);
+    return _this4 && _this4.init && _this4.init.handle && _this4.init.handle.info && _this4.init.handle.info(error) || _this4.handle && _this4.handle.info(error);
   };
   if (typeof actionName === "function") return actionName.apply(this, arguments);
   if (typeof actionName === "string") {
