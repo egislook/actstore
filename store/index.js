@@ -125,7 +125,8 @@ function useActStore(args) {
 function useStore(args) {
   var actions = args.actions,
       config = args.config,
-      init = args.init,
+      _args$init = args.init,
+      init = _args$init === undefined ? {} : _args$init,
       initialState = args.initialState,
       router = args.router;
 
@@ -137,6 +138,9 @@ function useStore(args) {
     set: setGlobalHandler
   };
   var store = _extends({}, args, {
+    init: _extends({}, args.init, {
+      CLIENT: (typeof window === 'undefined' ? 'undefined' : _typeof(window)) === 'object'
+    }),
     cookies: _jsCookie2.default,
     config: config,
     handle: handlers,
@@ -259,6 +263,10 @@ function setState(newState) {
 
   // Add the new state into our current state
   this.store = _extends({}, this.store, newState);
+  // Clears out false values in the store
+  for (var key in newState) {
+    if (!newState[key]) delete this.store[key];
+  }
   // Then fire all subscribed functions in our subscriptions array
   this.subscriptions.forEach(function (subscription) {
     subscription(_this2.store);

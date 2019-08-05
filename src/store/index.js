@@ -92,7 +92,7 @@ export default function useActStore(args) {
     This is our useActStore() hooks
  */
 function useStore(args) {
-  const { actions, config, init, initialState, router } = args
+  const { actions, config, init = {}, initialState, router } = args
   const handlers = {
     clear: handleClear,
     confirm: handleConfirm,
@@ -102,6 +102,10 @@ function useStore(args) {
   }
   const store = {
     ...args,
+    init: {
+      ...args.init,
+      CLIENT: typeof window === 'object'
+    },
     cookies: Cookies,
     config,
     handle: handlers,
@@ -224,6 +228,10 @@ function resetState() {
 function setState(newState) {
   // Add the new state into our current state
   this.store = { ...this.store, ...newState }
+  // Clears out false values in the store
+  for (let key in newState) {
+    if (!newState[key]) delete this.store[key]
+  }
   // Then fire all subscribed functions in our subscriptions array
   this.subscriptions.forEach(subscription => {
     subscription(this.store)
