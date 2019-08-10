@@ -26,3 +26,4 @@ package-lock.json
 /static/style.css
 
 .idea
+/actstore*
