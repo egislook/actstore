@@ -3,7 +3,7 @@
 'use strict';
 
 var path = require('path');
-var fs = require('fs-extra');
+var fs = require('fs');
 
 var componentName;
 

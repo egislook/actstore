@@ -12,10 +12,8 @@ const defaultStatus = {
 
 export const ActStore = props => {
   const { act } = useActStore(props)
-  useEffect(() => {
-    act('APP_INIT')
-    console.log('actStore initialized')
-  }, [])
+  useEffect(() => { act('APP_INIT')}, [])
+  // console.log('ACTSTORE: Init')
   return null
 }
 
@@ -68,7 +66,7 @@ export default function useActStore(args) {
     const firstActionName = false && Object.keys(actions).shift()
     if (store.actions[firstActionName]) return store
     for (let actionName in actions) {
-      store.actions[actionName] = actions[actionName].bind(store.set)
+      store.actions[actionName] = actions[actionName].bind(store)
     }
     return store
   }
@@ -80,7 +78,7 @@ export default function useActStore(args) {
     const firstActionName = Object.keys(actions).shift()
     if (store.actions[firstActionName]) return store
     for (let actionName in actions) {
-      store.actions[actionName] = actions[actionName].bind(store.set)
+      store.actions[actionName] = actions[actionName].bind(store)
     }
     return store
   }
@@ -110,8 +108,9 @@ function useStore(args) {
     config,
     handle: handlers,
     route: {
-      get: str => (str ? router.asPath.includes(str) : router.asPath),
-      set: setRoute
+      get: getRoute,
+      set: setRoute,
+      match: str => router.asPath.includes(str)
     },
     status: {
       ...defaultStatus,
@@ -144,7 +143,8 @@ function useStore(args) {
     if (keys.length === 1) return store.store[singleKey]
     return keys.reduce((res, key) => Object.assign(res, { [key]: store.store[key] }), {})
   }
-
+  
+  
   function setGlobal(data) {
     // Add the new state into our current state
     if (data) {
@@ -174,11 +174,33 @@ function useStore(args) {
     const globalStatus = { ...defaultStatus, loading }
     store.status.loading !== loading && store.setStatusState(globalStatus)
   }
+  
+  
+  
+  function getRoute(singleKey) {
+    
+    const path = router && router.asPath && router.asPath.split('?').shift() || ''
+    const routeData = {
+      asPath: router.asPath,
+      path,
+      query: router.query,
+      params: path.split('/').filter(val => val.length)
+    }
+    
+    const keys = [...arguments]
+    if (!keys.length) return routeData
+    if (keys.length === 1) return routeData[singleKey]
+    return keys.reduce((res, key) => Object.assign(res, { [key]: routeData[key] }), {})
+  }
 
   function setRoute(name, disableRoute) {
+    if(typeof name === 'object')
+      return new Promise(resolve => resolve(router.push(name, name.pathname, { shallow: true })))
+      
     const route = init.routes[name] || {
       link: router.query.redirect || name
     }
+    
     return new Promise(resolve => {
       if (disableRoute || router.asPath === (route.link || name)) return resolve(route)
       return resolve(router.push(route.link, route.link, { shallow: true }))
@@ -252,20 +274,24 @@ function act() {
   const actionName = args.shift()
   const actions = this.actions
   const handleError = error => {
-    // console.warn(error);
-    console.log('ACTSTORE', error)
-    return actions['APP_INFO']
-      ? actions['APP_INFO'].bind(this)(error)
+    
+    actions['APP_INFO']
+      ? actions['APP_INFO'](error)
       : this && this.handle && this.handle.info(error)
+      
+    throw error
   }
   if (typeof actionName === 'function') return actionName.apply(this, arguments)
   if (typeof actionName === 'string') {
-    const actFunction = actions[actionName]
+    const isAction = actions[actionName];
+    const actFunction = isAction
       ? actions[actionName].bind(this)(...args)
       : getRequestPromise.apply(this, arguments)
-    return typeof actFunction === 'object'
-      ? actFunction.catch(handleError)
-      : Promise.resolve(actFunction)
+      
+    if(actFunction instanceof Promise)
+      return isAction ? actFunction.catch(handleError) : actFunction
+    else 
+      return Promise.resolve(actFunction)
   }
   if (Array.isArray(actionName))
     return Promise.all(
@@ -276,7 +302,7 @@ function act() {
           ? getRequestPromise.bind(this)(null, request)
           : request
       )
-    ).catch(handleError)
+    )
   return handleError(actionName + ' action is missing correct actionName as first parameter')
 }
 

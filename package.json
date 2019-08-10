@@ -3,6 +3,13 @@
   "version": "0.0.15",
   "description": "Just global store solution using react hooks, context and fetchier",
   "main": "store/index.js",
+  "babel": {
+    "presets": [
+      "es2015",
+      "stage-0",
+      "react"
+    ]
+  },
   "files": [
     "cli",
     "store"
@@ -12,7 +19,9 @@
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "watch": "babel --presets es2015,stage-0,react --watch src/ --out-dir ./",
+    "start": "babel --watch src/ --out-dir ./",
+    "watch": "npm start & nodemon --delay 1.5 --watch /src/* --exec 'npm run rename'",
+    "rename": "npm pack && mv actstore-0.*.*.tgz actstore.tgz",
     "lint": "prettier --tab-width 2 --jsx-bracket-same-line true --single-quote --print-width 100 true --semi false --write \"src/**/*.js\""
   },
   "homepage": "https://github.com/egislook/actstore#readme",
@@ -29,16 +38,17 @@
   "license": "ISC",
   "devDependencies": {
     "babel-cli": "^6.26.0",
+    "babel-plugin-module-resolver": "^3.2.0",
     "babel-preset-es2015": "^6.24.1",
     "babel-preset-react": "^6.24.1",
     "babel-preset-stage-0": "^6.24.1",
+    "nodemon": "^1.19.1",
     "prettier": "^1.18.2",
-    "react": "file:../../PORTAL-Web/node_modules/react"
+    "react": "../../PORTAL-Web/node_modules/react"
   },
   "dependencies": {
     "commander": "^2.20.0",
     "fetchier": "0.0.21",
-    "fs-extra": "^8.1.0",
     "js-cookie": "^2.2.0"
   }
 }

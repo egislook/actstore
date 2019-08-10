@@ -45,8 +45,8 @@ var ActStore = exports.ActStore = function ActStore(props) {
 
   (0, _react.useEffect)(function () {
     act('APP_INIT');
-    console.log('actStore initialized');
   }, []);
+  // console.log('ACTSTORE: Init')
   return null;
 };
 
@@ -99,7 +99,7 @@ function useActStore(args) {
     var firstActionName = false && Object.keys(actions).shift();
     if (store.actions[firstActionName]) return store;
     for (var actionName in actions) {
-      store.actions[actionName] = actions[actionName].bind(store.set);
+      store.actions[actionName] = actions[actionName].bind(store);
     }
     return store;
   }
@@ -111,7 +111,7 @@ function useActStore(args) {
     var _firstActionName = Object.keys(_actions).shift();
     if (_store.actions[_firstActionName]) return _store;
     for (var _actionName in _actions) {
-      _store.actions[_actionName] = _actions[_actionName].bind(_store.set);
+      _store.actions[_actionName] = _actions[_actionName].bind(_store);
     }
     return _store;
   }
@@ -145,10 +145,11 @@ function useStore(args) {
     config: config,
     handle: handlers,
     route: {
-      get: function get(str) {
-        return str ? router.asPath.includes(str) : router.asPath;
-      },
-      set: setRoute
+      get: getRoute,
+      set: setRoute,
+      match: function match(str) {
+        return router.asPath.includes(str);
+      }
     },
     status: _extends({}, defaultStatus, {
       loading: (typeof window === 'undefined' ? 'undefined' : _typeof(window)) !== 'object'
@@ -209,10 +210,35 @@ function useStore(args) {
     store.status.loading !== loading && store.setStatusState(globalStatus);
   }
 
+  function getRoute(singleKey) {
+
+    var path = router && router.asPath && router.asPath.split('?').shift() || '';
+    var routeData = {
+      asPath: router.asPath,
+      path: path,
+      query: router.query,
+      params: path.split('/').filter(function (val) {
+        return val.length;
+      })
+    };
+
+    var keys = [].concat(Array.prototype.slice.call(arguments));
+    if (!keys.length) return routeData;
+    if (keys.length === 1) return routeData[singleKey];
+    return keys.reduce(function (res, key) {
+      return Object.assign(res, _defineProperty({}, key, routeData[key]));
+    }, {});
+  }
+
   function setRoute(name, disableRoute) {
+    if ((typeof name === 'undefined' ? 'undefined' : _typeof(name)) === 'object') return new Promise(function (resolve) {
+      return resolve(router.push(name, name.pathname, { shallow: true }));
+    });
+
     var route = init.routes[name] || {
       link: router.query.redirect || name
     };
+
     return new Promise(function (resolve) {
       if (disableRoute || router.asPath === (route.link || name)) return resolve(route);
       return resolve(router.push(route.link, route.link, { shallow: true }));
@@ -291,18 +317,21 @@ function act() {
   var actionName = args.shift();
   var actions = this.actions;
   var handleError = function handleError(error) {
-    // console.warn(error);
-    console.log('ACTSTORE', error);
-    return actions['APP_INFO'] ? actions['APP_INFO'].bind(_this4)(error) : _this4 && _this4.handle && _this4.handle.info(error);
+
+    actions['APP_INFO'] ? actions['APP_INFO'](error) : _this4 && _this4.handle && _this4.handle.info(error);
+
+    throw error;
   };
   if (typeof actionName === 'function') return actionName.apply(this, arguments);
   if (typeof actionName === 'string') {
-    var actFunction = actions[actionName] ? actions[actionName].bind(this).apply(undefined, _toConsumableArray(args)) : getRequestPromise.apply(this, arguments);
-    return (typeof actFunction === 'undefined' ? 'undefined' : _typeof(actFunction)) === 'object' ? actFunction.catch(handleError) : Promise.resolve(actFunction);
+    var isAction = actions[actionName];
+    var actFunction = isAction ? actions[actionName].bind(this).apply(undefined, _toConsumableArray(args)) : getRequestPromise.apply(this, arguments);
+
+    if (actFunction instanceof Promise) return isAction ? actFunction.catch(handleError) : actFunction;else return Promise.resolve(actFunction);
   }
   if (Array.isArray(actionName)) return Promise.all(actionName.map(function (request) {
     return typeof request === 'string' ? act.bind(_this4)(request) : (typeof request === 'undefined' ? 'undefined' : _typeof(request)) === 'object' ? getRequestPromise.bind(_this4)(null, request) : request;
-  })).catch(handleError);
+  }));
   return handleError(actionName + ' action is missing correct actionName as first parameter');
 }
 
