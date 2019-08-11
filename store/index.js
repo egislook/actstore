@@ -335,11 +335,14 @@ function act() {
   return handleError(actionName + ' action is missing correct actionName as first parameter');
 }
 
-function action(actionName) {
+function action() {
+  var args = [].concat(Array.prototype.slice.call(arguments));
+  var actionName = args.shift();
+
   var actions = this.actions;
   if (typeof actionName !== 'string' || !actions[actionName]) return Promise.reject(actionName + ' action can not be found');
   return function () {
-    return actions[actionName].apply(this, arguments);
+    return actions[actionName].apply(this, args);
   };
 }
 
