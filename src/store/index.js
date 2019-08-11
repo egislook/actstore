@@ -314,7 +314,7 @@ function action() {
   if (typeof actionName !== 'string' || !actions[actionName])
     return Promise.reject(actionName + ' action can not be found')
   return function() {
-    return actions[actionName].apply(this, args)
+    return actions[actionName].apply(this, args.length ? args : arguments)
   }
 }
 
