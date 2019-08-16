@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import fetchier, { GET, POST, PUT, GQL, WS } from 'fetchier'
+import { upsert } from 'fetchier/utils'
 import Cookies from 'js-cookie'
 
 let init = null
@@ -281,6 +282,7 @@ function act() {
       
     throw error
   }
+  
   if (typeof actionName === 'function') return actionName.apply(this, arguments)
   if (typeof actionName === 'string') {
     const isAction = actions[actionName];
@@ -351,13 +353,19 @@ function getRequestPromise(actionName, request) {
   }
   const token = Cookies.get('token')
   switch (req.method) {
-    case 'GQL':
     case 'POST':
     case 'GET':
-      const url = req.method === 'GQL' ? GQL_URL : endpoints[endpoint] + req.path
-      return fetchier[req.method]({ url, token, ...req })
+      return fetchier[req.method]({ url: endpoints[endpoint] + req.path, token, ...req })
+    case 'GQL':
+      if(!req.upsert && !req.data)
+        return fetchier[req.method]({ url: GQL_URL, token, ...req })
+        
+      const upsertRequest = upsert({ data: req.upsert, ...req })
+      if(!upsertRequest) return Promise.resolve('Nothing to change. Data is the same as Prev')
+        return fetchier[req.method]({ url: GQL_URL, token, ...req, ...upsertRequest })
     case 'OPEN':
-      return WS.OPEN({ url: WSS_URL, token, ...req }, null)
+      const onError = req.onError || this.actions['APP_INFO'];
+      return WS.OPEN({ url: WSS_URL, token, ...req, onError }, null)
     case 'CLOSE':
       return WS.CLOSE({ url: WSS_URL, ...req })
     case 'PUT':

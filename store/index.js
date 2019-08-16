@@ -21,6 +21,8 @@ var _fetchier = require('fetchier');
 
 var _fetchier2 = _interopRequireDefault(_fetchier);
 
+var _utils = require('fetchier/utils');
+
 var _jsCookie = require('js-cookie');
 
 var _jsCookie2 = _interopRequireDefault(_jsCookie);
@@ -322,6 +324,7 @@ function act() {
 
     throw error;
   };
+
   if (typeof actionName === 'function') return actionName.apply(this, arguments);
   if (typeof actionName === 'string') {
     var isAction = actions[actionName];
@@ -379,13 +382,18 @@ function getRequestPromise(actionName, request) {
   }, req || request);
   var token = _jsCookie2.default.get('token');
   switch (req.method) {
-    case 'GQL':
     case 'POST':
     case 'GET':
-      var url = req.method === 'GQL' ? GQL_URL : endpoints[endpoint] + req.path;
-      return _fetchier2.default[req.method](_extends({ url: url, token: token }, req));
+      return _fetchier2.default[req.method](_extends({ url: endpoints[endpoint] + req.path, token: token }, req));
+    case 'GQL':
+      if (!req.upsert && !req.data) return _fetchier2.default[req.method](_extends({ url: GQL_URL, token: token }, req));
+
+      var upsertRequest = (0, _utils.upsert)(_extends({ data: req.upsert }, req));
+      if (!upsertRequest) return Promise.resolve('Nothing to change. Data is the same as Prev');
+      return _fetchier2.default[req.method](_extends({ url: GQL_URL, token: token }, req, upsertRequest));
     case 'OPEN':
-      return _fetchier.WS.OPEN(_extends({ url: WSS_URL, token: token }, req), null);
+      var onError = req.onError || this.actions['APP_INFO'];
+      return _fetchier.WS.OPEN(_extends({ url: WSS_URL, token: token }, req, { onError: onError }), null);
     case 'CLOSE':
       return _fetchier.WS.CLOSE(_extends({ url: WSS_URL }, req));
     case 'PUT':
