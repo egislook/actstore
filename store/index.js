@@ -61,25 +61,14 @@ function Memo(_ref) {
   var children = _ref.children,
       triggers = _ref.triggers;
 
-  if (triggers) {
-    // noinspection JSCheckFunctionSignatures
-    return children.map(function (child, index) {
-      return _react2.default.useMemo(function () {
-        return child;
-      }, triggers ? Object.values(triggers[index]) : Object.values(child.props));
-    });
-  } else {
-    // noinspection JSCheckFunctionSignatures
-    return children.map(function (child) {
-      return _react2.default.useMemo(function () {
-        return child;
-      }, child.props.triggers ? Object.values(child.props.triggers) : Object.values(child.props));
-    });
-  }
+  return _react2.default.Children.map(children, function (child) {
+    return _react2.default.useMemo(function () {
+      return child;
+    }, triggers && Object.values(triggers) || child.props.triggers ? Object.values(child.props.triggers) : Object.values(child.props));
+  });
 }
 
 function useMemoize(Component, props, triggers) {
-  // noinspection JSCheckFunctionSignatures
   return _react2.default.useMemo(function () {
     return _react2.default.createElement(Component, props);
   }, triggers ? Object.values(triggers) : Object.values(props));

@@ -24,27 +24,12 @@ export const ActStore = props => {
   EX: useMemoize(Component, props);
  */
 export function Memo({ children, triggers }) {
-  if (triggers) {
-    // noinspection JSCheckFunctionSignatures
-    return children.map((child, index) =>
-      React.useMemo(
-        () => child,
-        triggers ? Object.values(triggers[index]) : Object.values(child.props)
-      )
-    )
-  } else {
-    // noinspection JSCheckFunctionSignatures
-    return children.map(child =>
-      React.useMemo(
-        () => child,
-        child.props.triggers ? Object.values(child.props.triggers) : Object.values(child.props)
-      )
-    )
-  }
+  return React.Children.map(children, child => {
+    return React.useMemo(() => child, (triggers && Object.values(triggers)) || child.props.triggers ? Object.values(child.props.triggers) : Object.values(child.props))
+  })
 }
 
 export function useMemoize(Component, props, triggers) {
-  // noinspection JSCheckFunctionSignatures
   return React.useMemo(
     () => React.createElement(Component, props),
     triggers ? Object.values(triggers) : Object.values(props)
