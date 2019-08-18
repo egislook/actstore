@@ -41,12 +41,6 @@ function _defineProperty(obj, key, value) { if (key in obj) { Object.definePrope
 
 var init = null;
 var debug = null;
-var defaultStatus = {
-  loading: null,
-  info: null,
-  confirm: null,
-  update: null
-};
 
 var ActStore = exports.ActStore = function ActStore(props) {
   debug && console.log('ACTSTORE: INIT');
@@ -86,22 +80,18 @@ function useMemoize(Component, props, triggers) {
 
 function useActStore(args, watch) {
 
-  var store = init();
-  useInternalStore.call(store, { watch: watch, name: args && args.name });
+  var watcher = { watch: watch, name: args && args.name };
+  var store = init(watcher);
+  useInternalStore.call(store, watcher);
 
   if ((typeof args === 'undefined' ? 'undefined' : _typeof(args)) === 'object') {
     if (!args.actions) return store;
     var actions = args.actions(store);
-    // console.log('ACTSTORE: Component', args, store);
     if (!store.actions) store.actions = {};
-    // TODO!!!
-    // Add flag not to allow overwrite actions.
-    // For development purpose its better to overwrite cause updated actions are getting stored even if they are with the same name.
-    // const firstActionName = false && Object.keys(actions).shift()
-    // if (firstActionName && store.actions[firstActionName]) return store
     for (var actionName in actions) {
       store.actions[actionName] = actions[actionName].bind(store);
     }
+
     return store;
   }
 
@@ -131,20 +121,12 @@ function useStore() {
       initialState = args.initialState,
       router = args.router;
 
-  var handlers = {
-    clear: handleClear,
-    confirm: handleConfirm,
-    info: handleInfo,
-    loading: setLoading,
-    set: setGlobalHandler
-  };
   var store = _extends({}, args, {
     init: _extends({}, args.init, {
       CLIENT: (typeof window === 'undefined' ? 'undefined' : _typeof(window)) === 'object'
     }),
     cookies: _jsCookie2.default,
     config: config,
-    handle: handlers,
     route: {
       get: getRoute,
       set: setRoute,
@@ -152,11 +134,7 @@ function useStore() {
         return router && router.asPath.includes(str);
       }
     },
-    status: _extends({}, defaultStatus, {
-      loading: (typeof window === 'undefined' ? 'undefined' : _typeof(window)) !== 'object'
-    }),
     store: _extends({}, initialState, {
-      token: _jsCookie2.default.get('token'),
       get: getGlobal,
       set: setGlobal
     }),
@@ -164,7 +142,6 @@ function useStore() {
     // Give internal setState function access our store
   });store.resetState = resetState.bind(store, initialState);
   store.setState = setState.bind(store);
-  store.setStatusState = setStatusState.bind(store);
   // Generate internal act object of executable actions
   if (actions) {
     store.act = act.bind(store);
@@ -186,31 +163,8 @@ function useStore() {
   }
 
   function setGlobal(data) {
-    // Add the new state into our current state
-    if (data) {
-      store.setState(data);
-      store.setStatusState(_extends({}, defaultStatus, {
-        update: new Date().getTime()
-      }));
-    } else {
-      store.resetState();
-      store.setStatusState(_extends({}, defaultStatus, {
-        update: new Date().getTime()
-      }));
-    }
+    data ? store.setState(data) : store.resetState();
     return Promise.resolve(data);
-  }
-
-  function setGlobalHandler(handler) {
-    if ((typeof handler === 'undefined' ? 'undefined' : _typeof(handler)) !== 'object') return;
-    var handlerName = Object.key(handler).shift();
-    handlers[handlerName] = handler[handlerName];
-    return Promise.resolve(handler);
-  }
-
-  function setLoading(loading) {
-    var globalStatus = _extends({}, defaultStatus, { loading: loading });
-    store.status.loading !== loading && store.setStatusState(globalStatus);
   }
 
   function getRoute(singleKey) {
@@ -247,47 +201,26 @@ function useStore() {
       return resolve(router && router.push(route.link, route.link, { shallow: true }));
     });
   }
-
-  function handleClear() {
-    var update = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : new Date().getTime();
-
-    store.setStatusState(_extends({}, defaultStatus, {
-      update: update
-    }));
-  }
-
-  function handleConfirm(action) {
-    if (!action || action && typeof store.status.confirm !== 'function') return store.setStatusState(_extends({}, defaultStatus, { confirm: action }));
-    store.status.confirm();
-    return store.setStatusState(_extends({}, defaultStatus, { confirm: null }));
-  }
-
-  function handleInfo(data) {
-    store.setStatusState(_extends({}, defaultStatus, {
-      info: data && data.message || JSON.stringify(data)
-    }));
-  }
 }
 
 /*
     Internal setState function to manipulate store.state
     EX: store.setState({ loading: true });
  */
-function resetState() {
-  var initialState = arguments[0];
+function resetState(initialState) {
+  var _this = this;
+
   this.store = _extends({}, initialState, {
-    token: _jsCookie2.default.get('token'),
     get: this.store.get,
     set: this.store.set
     // Then fire all subscribed functions in our subscriptions array
-    // this.subscriptions.forEach(subscription => {
-    //   subscription.setWatcher(this.store)
-    // })
+  });this.subscriptions.forEach(function (subscription) {
+    subscription.setWatcher(_this.store);
   });
 }
 
 function setState(newState) {
-  var _this = this;
+  var _this2 = this;
 
   // Add the new state into our current state
 
@@ -301,34 +234,25 @@ function setState(newState) {
   }
   // Then fire all subscribed functions in our subscriptions array
   this.subscriptions.forEach(function (subscription) {
-    if (!subscription.watch) return subscription.setWatcher(_this.store);
+    if (!subscription.watch) return subscription.setWatcher(_this2.store);
 
     if (!subscription.watch.length) return;
 
     if (subscription.watch.find(function (key) {
       return stateKeys.includes(key);
-    })) return subscription.setWatcher(_this.store);
+    })) return subscription.setWatcher(_this2.store);
   });
 }
 
-function setStatusState(newStatusState) {
-  // Add the new state into our current state
-  this.status = _extends({}, this.status, newStatusState);
-  // Then fire all subscribed functions in our subscriptions array
-  // this.subscriptions.forEach(subscription => {
-  //   subscription.setWatcher(this.status)
-  // })
-}
-
 function act() {
-  var _this2 = this;
+  var _this3 = this;
 
   var args = [].concat(Array.prototype.slice.call(arguments));
   var actionName = args.shift();
   var actions = this.actions;
   var handleError = function handleError(error) {
 
-    actions['APP_INFO'] ? actions['APP_INFO'](error) : _this2 && _this2.handle && _this2.handle.info(error);
+    actions['APP_INFO'] ? actions['APP_INFO'](error) : _this3 && _this3.handle && _this3.handle.info(error);
 
     throw error;
   };
@@ -341,7 +265,7 @@ function act() {
     if (actFunction instanceof Promise) return isAction ? actFunction.catch(handleError) : actFunction;else return Promise.resolve(actFunction);
   }
   if (Array.isArray(actionName)) return Promise.all(actionName.map(function (request) {
-    return typeof request === 'string' ? act.bind(_this2)(request) : (typeof request === 'undefined' ? 'undefined' : _typeof(request)) === 'object' ? getRequestPromise.bind(_this2)(null, request) : request;
+    return typeof request === 'string' ? act.bind(_this3)(request) : (typeof request === 'undefined' ? 'undefined' : _typeof(request)) === 'object' ? getRequestPromise.bind(_this3)(null, request) : request;
   }));
   return handleError(actionName + ' action is missing correct actionName as first parameter');
 }
@@ -361,8 +285,9 @@ function registerActions() {
   var fn = arguments[0];
   var actions = fn(this);
   if (!this.actions) this.actions = {};
-  var firstActionName = Object.keys(actions).shift();
-  if (this.actions[firstActionName]) return this;
+  // const firstActionName = Object.keys(actions).shift()
+  // if (this.actions[firstActionName]) return this
+  // Always update actions for now
   for (var actionName in actions) {
     this.actions[actionName] = actions[actionName].bind(this.set);
   }
@@ -419,7 +344,7 @@ function getRequestPromise(actionName, request) {
     when it is mounted and unmounted.
  */
 function useInternalStore(_ref4) {
-  var _this3 = this;
+  var _this4 = this;
 
   var name = _ref4.name,
       watch = _ref4.watch;
@@ -429,15 +354,19 @@ function useInternalStore(_ref4) {
       _useState2 = _slicedToArray(_useState, 2),
       setWatcher = _useState2[1];
 
+  var _useState3 = (0, _react.useState)(name || Date.now() + Math.random()),
+      _useState4 = _slicedToArray(_useState3, 1),
+      componentId = _useState4[0];
+
   (0, _react.useEffect)(function () {
-    debug && console.log('ACTSTORE: hooked to', name || 'unknown');
+    debug && console.log('ACTSTORE: hooked to', componentId);
     // Add setState function to our subscriptions array on component mount
-    _this3.subscriptions.push({ watch: watch, setWatcher: setWatcher, name: name });
+    _this4.subscriptions.push({ watch: watch, setWatcher: setWatcher, name: name, componentId: componentId });
     // Remove setState function from subscriptions array on component unmount
     return function () {
-      if (!_this3.subscriptions) return console.error('ACTSTORE: missing store subscriptions to unsubscribe');
+      if (!_this4.subscriptions) return console.error('ACTSTORE: missing store subscriptions to unsubscribe');
       debug && console.log('ACTSTORE: unhooked from', name || 'unknown');
-      _this3.subscriptions = _this3.subscriptions.filter(function (subscription) {
+      _this4.subscriptions = _this4.subscriptions.filter(function (subscription) {
         return subscription.setWatcher !== setWatcher;
       });
     };

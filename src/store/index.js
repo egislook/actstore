@@ -6,12 +6,6 @@ import equal from '../utils/equal'
 
 let init = null
 let debug = null
-const defaultStatus = {
-  loading: null,
-  info: null,
-  confirm: null,
-  update: null
-}
 
 export const ActStore = props => {
   debug && console.log('ACTSTORE: INIT')
@@ -44,22 +38,18 @@ export function useMemoize(Component, props, triggers) {
 
 export default function useActStore(args, watch) {
   
-  const store = init()
-  useInternalStore.call(store, { watch, name: args && args.name })
+  const watcher = { watch, name: args && args.name };
+  const store = init(watcher)
+  useInternalStore.call(store, watcher)
   
   if (typeof args === 'object') {
     if(!args.actions) return store;
     const actions = args.actions(store)
-    // console.log('ACTSTORE: Component', args, store);
     if (!store.actions) store.actions = {}
-    // TODO!!!
-    // Add flag not to allow overwrite actions.
-    // For development purpose its better to overwrite cause updated actions are getting stored even if they are with the same name.
-    // const firstActionName = false && Object.keys(actions).shift()
-    // if (firstActionName && store.actions[firstActionName]) return store
     for (let actionName in actions) {
       store.actions[actionName] = actions[actionName].bind(store)
     }
+    
     return store
   }
 
@@ -82,13 +72,6 @@ export default function useActStore(args, watch) {
  */
 function useStore(args = {}) {
   const { actions, config, init = {}, initialState, router } = args
-  const handlers = {
-    clear: handleClear,
-    confirm: handleConfirm,
-    info: handleInfo,
-    loading: setLoading,
-    set: setGlobalHandler
-  }
   const store = {
     ...args,
     init: {
@@ -97,19 +80,13 @@ function useStore(args = {}) {
     },
     cookies: Cookies,
     config,
-    handle: handlers,
     route: {
       get: getRoute,
       set: setRoute,
       match: str => router && router.asPath.includes(str)
     },
-    status: {
-      ...defaultStatus,
-      loading: typeof window !== 'object'
-    },
     store: {
       ...initialState,
-      token: Cookies.get('token'),
       get: getGlobal,
       set: setGlobal
     },
@@ -118,7 +95,6 @@ function useStore(args = {}) {
   // Give internal setState function access our store
   store.resetState = resetState.bind(store, initialState)
   store.setState = setState.bind(store)
-  store.setStatusState = setStatusState.bind(store)
   // Generate internal act object of executable actions
   if (actions) {
     store.act = act.bind(store)
@@ -137,36 +113,9 @@ function useStore(args = {}) {
   
   
   function setGlobal(data) {
-    // Add the new state into our current state
-    if (data) {
-      store.setState(data)
-      store.setStatusState({
-        ...defaultStatus,
-        update: new Date().getTime()
-      })
-    } else {
-      store.resetState()
-      store.setStatusState({
-        ...defaultStatus,
-        update: new Date().getTime()
-      })
-    }
+    data ? store.setState(data) : store.resetState()
     return Promise.resolve(data)
   }
-
-  function setGlobalHandler(handler) {
-    if (typeof handler !== 'object') return
-    const handlerName = Object.key(handler).shift()
-    handlers[handlerName] = handler[handlerName]
-    return Promise.resolve(handler)
-  }
-
-  function setLoading(loading) {
-    const globalStatus = { ...defaultStatus, loading }
-    store.status.loading !== loading && store.setStatusState(globalStatus)
-  }
-  
-  
   
   function getRoute(singleKey) {
     
@@ -197,45 +146,22 @@ function useStore(args = {}) {
       return resolve(router && router.push(route.link, route.link, { shallow: true }))
     })
   }
-
-  function handleClear(update = new Date().getTime()) {
-    store.setStatusState({
-      ...defaultStatus,
-      update
-    })
-  }
-
-  function handleConfirm(action) {
-    if (!action || (action && typeof store.status.confirm !== 'function'))
-      return store.setStatusState({ ...defaultStatus, confirm: action })
-    store.status.confirm()
-    return store.setStatusState({ ...defaultStatus, confirm: null })
-  }
-
-  function handleInfo(data) {
-    store.setStatusState({
-      ...defaultStatus,
-      info: (data && data.message) || JSON.stringify(data)
-    })
-  }
 }
 
 /*
     Internal setState function to manipulate store.state
     EX: store.setState({ loading: true });
  */
-function resetState() {
-  const initialState = arguments[0]
+function resetState(initialState) {
   this.store = {
     ...initialState,
-    token: Cookies.get('token'),
     get: this.store.get,
     set: this.store.set
   }
   // Then fire all subscribed functions in our subscriptions array
-  // this.subscriptions.forEach(subscription => {
-  //   subscription.setWatcher(this.store)
-  // })
+  this.subscriptions.forEach(subscription => {
+    subscription.setWatcher(this.store)
+  })
 }
 
 function setState(newState) {
@@ -260,15 +186,6 @@ function setState(newState) {
     if(subscription.watch.find(key => stateKeys.includes(key)))
       return subscription.setWatcher(this.store)
   })
-}
-
-function setStatusState(newStatusState) {
-  // Add the new state into our current state
-  this.status = { ...this.status, ...newStatusState }
-  // Then fire all subscribed functions in our subscriptions array
-  // this.subscriptions.forEach(subscription => {
-  //   subscription.setWatcher(this.status)
-  // })
 }
 
 function act() {
@@ -325,8 +242,9 @@ function registerActions() {
   const fn = arguments[0]
   const actions = fn(this)
   if (!this.actions) this.actions = {}
-  const firstActionName = Object.keys(actions).shift()
-  if (this.actions[firstActionName]) return this
+  // const firstActionName = Object.keys(actions).shift()
+  // if (this.actions[firstActionName]) return this
+  // Always update actions for now
   for (let actionName in actions) {
     this.actions[actionName] = actions[actionName].bind(this.set)
   }
@@ -377,10 +295,11 @@ function getRequestPromise(actionName, request) {
 function useInternalStore({ name, watch }) {
   // Get setState function from useState
   const [, setWatcher] = useState(watch)
+  const [ componentId ] = useState(name || Date.now() + Math.random());
   useEffect(() => {
-    debug && console.log('ACTSTORE: hooked to', name || 'unknown');
+    debug && console.log('ACTSTORE: hooked to', componentId);
     // Add setState function to our subscriptions array on component mount
-    this.subscriptions.push({ watch, setWatcher, name })
+    this.subscriptions.push({ watch, setWatcher, name, componentId })
     // Remove setState function from subscriptions array on component unmount
     return () => {
       if (!this.subscriptions) return console.error('ACTSTORE: missing store subscriptions to unsubscribe')
