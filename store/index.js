@@ -177,7 +177,6 @@ function useStore() {
   };
 
   function getGlobal(singleKey) {
-    console.log(this);
     var keys = [].concat(Array.prototype.slice.call(arguments));
     if (!keys.length) return store.store;
     if (keys.length === 1) return store.store[singleKey];
