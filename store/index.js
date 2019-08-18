@@ -5,6 +5,8 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.ActStore = undefined;
 
+var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
+
 var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
 
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
@@ -27,6 +29,10 @@ var _jsCookie = require('js-cookie');
 
 var _jsCookie2 = _interopRequireDefault(_jsCookie);
 
+var _equal = require('../utils/equal');
+
+var _equal2 = _interopRequireDefault(_equal);
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
@@ -34,6 +40,7 @@ function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr
 function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
 
 var init = null;
+var debug = null;
 var defaultStatus = {
   loading: null,
   info: null,
@@ -42,13 +49,15 @@ var defaultStatus = {
 };
 
 var ActStore = exports.ActStore = function ActStore(props) {
-  var _useActStore = useActStore(props),
-      act = _useActStore.act;
+  debug && console.log('ACTSTORE: INIT');
+  if (!init) init = useStore(props);
+
+  var _init = init(),
+      act = _init.act;
 
   (0, _react.useEffect)(function () {
     act('APP_INIT');
   }, []);
-  // console.log('ACTSTORE: Init')
   return null;
 };
 
@@ -61,10 +70,11 @@ function Memo(_ref) {
   var children = _ref.children,
       triggers = _ref.triggers;
 
+  //triggers && Object.values(triggers)) || child.props.triggers ? Object.values(child.props.triggers) : 
   return _react2.default.Children.map(children, function (child) {
     return _react2.default.useMemo(function () {
       return child;
-    }, triggers && Object.values(triggers) || child.props.triggers ? Object.values(child.props.triggers) : Object.values(child.props));
+    }, triggers ? Object.values(triggers) : Object.values(child.props));
   });
 }
 
@@ -74,21 +84,21 @@ function useMemoize(Component, props, triggers) {
   }, triggers ? Object.values(triggers) : Object.values(props));
 }
 
-function useActStore(args) {
-  if (!init) {
-    init = useStore(args);
-    return init();
-  }
+function useActStore(args, watch) {
+
+  var store = init();
+  useInternalStore.call(store, { watch: watch, name: args && args.name });
 
   if ((typeof args === 'undefined' ? 'undefined' : _typeof(args)) === 'object') {
-    var store = init();
+    if (!args.actions) return store;
     var actions = args.actions(store);
+    // console.log('ACTSTORE: Component', args, store);
     if (!store.actions) store.actions = {};
     // TODO!!!
     // Add flag not to allow overwrite actions.
     // For development purpose its better to overwrite cause updated actions are getting stored even if they are with the same name.
-    var firstActionName = false && Object.keys(actions).shift();
-    if (store.actions[firstActionName]) return store;
+    // const firstActionName = false && Object.keys(actions).shift()
+    // if (firstActionName && store.actions[firstActionName]) return store
     for (var actionName in actions) {
       store.actions[actionName] = actions[actionName].bind(store);
     }
@@ -96,15 +106,14 @@ function useActStore(args) {
   }
 
   if (typeof args === 'function') {
-    var _store = init();
-    var _actions = args(_store);
-    if (!_store.actions) _store.actions = {};
-    var _firstActionName = Object.keys(_actions).shift();
-    if (_store.actions[_firstActionName]) return _store;
+    var _actions = args(store);
+    if (!store.actions) store.actions = {};
+    var firstActionName = Object.keys(_actions).shift();
+    if (store.actions[firstActionName]) return store;
     for (var _actionName in _actions) {
-      _store.actions[_actionName] = _actions[_actionName].bind(_store);
+      store.actions[_actionName] = _actions[_actionName].bind(store);
     }
-    return _store;
+    return store;
   }
 
   return init();
@@ -113,7 +122,8 @@ function useActStore(args) {
 /*
     This is our useActStore() hooks
  */
-function useStore(args) {
+function useStore() {
+  var args = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
   var actions = args.actions,
       config = args.config,
       _args$init = args.init,
@@ -139,7 +149,7 @@ function useStore(args) {
       get: getRoute,
       set: setRoute,
       match: function match(str) {
-        return router.asPath.includes(str);
+        return router && router.asPath.includes(str);
       }
     },
     status: _extends({}, defaultStatus, {
@@ -162,9 +172,12 @@ function useStore(args) {
     registerActions.call(store, actions);
   }
   // Return subscribe-able hooks
-  return useInternalStore.bind(store);
+  return function () {
+    return store;
+  };
 
   function getGlobal(singleKey) {
+    console.log(this);
     var keys = [].concat(Array.prototype.slice.call(arguments));
     if (!keys.length) return store.store;
     if (keys.length === 1) return store.store[singleKey];
@@ -205,9 +218,9 @@ function useStore(args) {
 
     var path = router && router.asPath && router.asPath.split('?').shift() || '';
     var routeData = {
-      asPath: router.asPath,
+      asPath: router && router.asPath,
       path: path,
-      query: router.query,
+      query: router && router.query,
       params: path.split('/').filter(function (val) {
         return val.length;
       })
@@ -223,7 +236,7 @@ function useStore(args) {
 
   function setRoute(name, disableRoute) {
     if ((typeof name === 'undefined' ? 'undefined' : _typeof(name)) === 'object') return new Promise(function (resolve) {
-      return resolve(router.push(name, name.pathname, { shallow: true }));
+      return resolve(router && router.push(name, name.pathname, { shallow: true }));
     });
 
     var route = init.routes[name] || {
@@ -231,8 +244,8 @@ function useStore(args) {
     };
 
     return new Promise(function (resolve) {
-      if (disableRoute || router.asPath === (route.link || name)) return resolve(route);
-      return resolve(router.push(route.link, route.link, { shallow: true }));
+      if (disableRoute || router && router.asPath === (route.link || name)) return resolve(route);
+      return resolve(router && router.push(route.link, route.link, { shallow: true }));
     });
   }
 
@@ -262,54 +275,61 @@ function useStore(args) {
     EX: store.setState({ loading: true });
  */
 function resetState() {
-  var _this = this;
-
   var initialState = arguments[0];
   this.store = _extends({}, initialState, {
     token: _jsCookie2.default.get('token'),
     get: this.store.get,
     set: this.store.set
     // Then fire all subscribed functions in our subscriptions array
-  });this.subscriptions.forEach(function (subscription) {
-    subscription(_this.store);
+    // this.subscriptions.forEach(subscription => {
+    //   subscription.setWatcher(this.store)
+    // })
   });
 }
 
 function setState(newState) {
-  var _this2 = this;
+  var _this = this;
 
   // Add the new state into our current state
+
+  // console.log(equal(newState, this.store), newState)
+  debug && console.log('ACTSTORE: set', newState);
+  var stateKeys = Object.keys(newState);
   this.store = _extends({}, this.store, newState);
   // Clears out false values in the store
-  for (var key in newState) {
+  for (var key in stateKeys) {
     if (!newState[key]) delete this.store[key];
   }
   // Then fire all subscribed functions in our subscriptions array
   this.subscriptions.forEach(function (subscription) {
-    subscription(_this2.store);
+    if (!subscription.watch) return subscription.setWatcher(_this.store);
+
+    if (!subscription.watch.length) return;
+
+    if (subscription.watch.find(function (key) {
+      return stateKeys.includes(key);
+    })) return subscription.setWatcher(_this.store);
   });
 }
 
 function setStatusState(newStatusState) {
-  var _this3 = this;
-
   // Add the new state into our current state
   this.status = _extends({}, this.status, newStatusState);
   // Then fire all subscribed functions in our subscriptions array
-  this.subscriptions.forEach(function (subscription) {
-    subscription(_this3.status);
-  });
+  // this.subscriptions.forEach(subscription => {
+  //   subscription.setWatcher(this.status)
+  // })
 }
 
 function act() {
-  var _this4 = this;
+  var _this2 = this;
 
   var args = [].concat(Array.prototype.slice.call(arguments));
   var actionName = args.shift();
   var actions = this.actions;
   var handleError = function handleError(error) {
 
-    actions['APP_INFO'] ? actions['APP_INFO'](error) : _this4 && _this4.handle && _this4.handle.info(error);
+    actions['APP_INFO'] ? actions['APP_INFO'](error) : _this2 && _this2.handle && _this2.handle.info(error);
 
     throw error;
   };
@@ -322,7 +342,7 @@ function act() {
     if (actFunction instanceof Promise) return isAction ? actFunction.catch(handleError) : actFunction;else return Promise.resolve(actFunction);
   }
   if (Array.isArray(actionName)) return Promise.all(actionName.map(function (request) {
-    return typeof request === 'string' ? act.bind(_this4)(request) : (typeof request === 'undefined' ? 'undefined' : _typeof(request)) === 'object' ? getRequestPromise.bind(_this4)(null, request) : request;
+    return typeof request === 'string' ? act.bind(_this2)(request) : (typeof request === 'undefined' ? 'undefined' : _typeof(request)) === 'object' ? getRequestPromise.bind(_this2)(null, request) : request;
   }));
   return handleError(actionName + ' action is missing correct actionName as first parameter');
 }
@@ -363,7 +383,7 @@ function getRequestPromise(actionName, request) {
       WSS_URL = _ref3.WSS_URL,
       endpoints = _ref3.endpoints;
 
-  console.warn(actionName, endpoint || query && query.replace(/[\n\t]/gm, '').trim().substr(0, 50) || '');
+  debug && console.warn(actionName, request);
   req = _extends({
     method: actionName || req && req.method || method || 'GET',
     endpoint: req && req.endpoint || endpoint,
@@ -399,19 +419,27 @@ function getRequestPromise(actionName, request) {
     Internal useInternalStore hooks to handle component subscriptions
     when it is mounted and unmounted.
  */
-function useInternalStore() {
-  var _this5 = this;
+function useInternalStore(_ref4) {
+  var _this3 = this;
+
+  var name = _ref4.name,
+      watch = _ref4.watch;
 
   // Get setState function from useState
-  var newSubscription = (0, _react.useState)()[1];
+  var _useState = (0, _react.useState)(watch),
+      _useState2 = _slicedToArray(_useState, 2),
+      setWatcher = _useState2[1];
+
   (0, _react.useEffect)(function () {
+    debug && console.log('ACTSTORE: hooked to', name || 'unknown');
     // Add setState function to our subscriptions array on component mount
-    _this5.subscriptions.push(newSubscription);
+    _this3.subscriptions.push({ watch: watch, setWatcher: setWatcher, name: name });
     // Remove setState function from subscriptions array on component unmount
     return function () {
-      if (!_this5.subscriptions) return console.log('useInternalStore', _this5);
-      _this5.subscriptions = _this5.subscriptions.filter(function (subscription) {
-        return subscription !== newSubscription;
+      if (!_this3.subscriptions) return console.error('ACTSTORE: missing store subscriptions to unsubscribe');
+      debug && console.log('ACTSTORE: unhooked from', name || 'unknown');
+      _this3.subscriptions = _this3.subscriptions.filter(function (subscription) {
+        return subscription.setWatcher !== setWatcher;
       });
     };
   }, []);

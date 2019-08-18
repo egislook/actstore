@@ -12,7 +12,8 @@
   },
   "files": [
     "cli",
-    "store"
+    "store",
+    "utils"
   ],
   "bin": {
     "actgen": "cli/index.js"

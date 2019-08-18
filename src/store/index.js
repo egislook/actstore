@@ -2,8 +2,10 @@ import React, { useEffect, useState } from 'react'
 import fetchier, { GET, POST, PUT, GQL, WS } from 'fetchier'
 import { upsert } from 'fetchier/utils'
 import Cookies from 'js-cookie'
+import equal from '../utils/equal'
 
 let init = null
+let debug = null
 const defaultStatus = {
   loading: null,
   info: null,
@@ -12,9 +14,12 @@ const defaultStatus = {
 }
 
 export const ActStore = props => {
-  const { act } = useActStore(props)
+  debug && console.log('ACTSTORE: INIT')
+  if(!init)
+    init = useStore(props)
+  
+  const { act } = init()
   useEffect(() => { act('APP_INIT')}, [])
-  // console.log('ACTSTORE: Init')
   return null
 }
 
@@ -24,8 +29,9 @@ export const ActStore = props => {
   EX: useMemoize(Component, props);
  */
 export function Memo({ children, triggers }) {
+  //triggers && Object.values(triggers)) || child.props.triggers ? Object.values(child.props.triggers) : 
   return React.Children.map(children, child => {
-    return React.useMemo(() => child, (triggers && Object.values(triggers)) || child.props.triggers ? Object.values(child.props.triggers) : Object.values(child.props))
+    return React.useMemo(() => child, triggers ? Object.values(triggers) : Object.values(child.props))
   })
 }
 
@@ -36,21 +42,21 @@ export function useMemoize(Component, props, triggers) {
   )
 }
 
-export default function useActStore(args) {
-  if (!init) {
-    init = useStore(args)
-    return init()
-  }
-
+export default function useActStore(args, watch) {
+  
+  const store = init()
+  useInternalStore.call(store, { watch, name: args && args.name })
+  
   if (typeof args === 'object') {
-    const store = init()
+    if(!args.actions) return store;
     const actions = args.actions(store)
+    // console.log('ACTSTORE: Component', args, store);
     if (!store.actions) store.actions = {}
     // TODO!!!
     // Add flag not to allow overwrite actions.
     // For development purpose its better to overwrite cause updated actions are getting stored even if they are with the same name.
-    const firstActionName = false && Object.keys(actions).shift()
-    if (store.actions[firstActionName]) return store
+    // const firstActionName = false && Object.keys(actions).shift()
+    // if (firstActionName && store.actions[firstActionName]) return store
     for (let actionName in actions) {
       store.actions[actionName] = actions[actionName].bind(store)
     }
@@ -58,7 +64,6 @@ export default function useActStore(args) {
   }
 
   if (typeof args === 'function') {
-    const store = init()
     const actions = args(store)
     if (!store.actions) store.actions = {}
     const firstActionName = Object.keys(actions).shift()
@@ -75,7 +80,7 @@ export default function useActStore(args) {
 /*
     This is our useActStore() hooks
  */
-function useStore(args) {
+function useStore(args = {}) {
   const { actions, config, init = {}, initialState, router } = args
   const handlers = {
     clear: handleClear,
@@ -96,7 +101,7 @@ function useStore(args) {
     route: {
       get: getRoute,
       set: setRoute,
-      match: str => router.asPath.includes(str)
+      match: str => router && router.asPath.includes(str)
     },
     status: {
       ...defaultStatus,
@@ -121,7 +126,7 @@ function useStore(args) {
     registerActions.call(store, actions)
   }
   // Return subscribe-able hooks
-  return useInternalStore.bind(store)
+  return () => store
 
   function getGlobal(singleKey) {
     const keys = [...arguments]
@@ -167,9 +172,9 @@ function useStore(args) {
     
     const path = router && router.asPath && router.asPath.split('?').shift() || ''
     const routeData = {
-      asPath: router.asPath,
+      asPath: router && router.asPath,
       path,
-      query: router.query,
+      query: router && router.query,
       params: path.split('/').filter(val => val.length)
     }
     
@@ -181,15 +186,15 @@ function useStore(args) {
 
   function setRoute(name, disableRoute) {
     if(typeof name === 'object')
-      return new Promise(resolve => resolve(router.push(name, name.pathname, { shallow: true })))
+      return new Promise(resolve => resolve(router && router.push(name, name.pathname, { shallow: true })))
       
     const route = init.routes[name] || {
       link: router.query.redirect || name
     }
     
     return new Promise(resolve => {
-      if (disableRoute || router.asPath === (route.link || name)) return resolve(route)
-      return resolve(router.push(route.link, route.link, { shallow: true }))
+      if (disableRoute || router && router.asPath === (route.link || name)) return resolve(route)
+      return resolve(router && router.push(route.link, route.link, { shallow: true }))
     })
   }
 
@@ -228,21 +233,32 @@ function resetState() {
     set: this.store.set
   }
   // Then fire all subscribed functions in our subscriptions array
-  this.subscriptions.forEach(subscription => {
-    subscription(this.store)
-  })
+  // this.subscriptions.forEach(subscription => {
+  //   subscription.setWatcher(this.store)
+  // })
 }
 
 function setState(newState) {
   // Add the new state into our current state
+  
+  // console.log(equal(newState, this.store), newState)
+  debug && console.log('ACTSTORE: set', newState)
+  const stateKeys = Object.keys(newState);
   this.store = { ...this.store, ...newState }
   // Clears out false values in the store
-  for (let key in newState) {
+  for (let key in stateKeys) {
     if (!newState[key]) delete this.store[key]
   }
   // Then fire all subscribed functions in our subscriptions array
   this.subscriptions.forEach(subscription => {
-    subscription(this.store)
+    if(!subscription.watch)
+      return subscription.setWatcher(this.store)
+    
+    if(!subscription.watch.length)
+      return
+      
+    if(subscription.watch.find(key => stateKeys.includes(key)))
+      return subscription.setWatcher(this.store)
   })
 }
 
@@ -250,9 +266,9 @@ function setStatusState(newStatusState) {
   // Add the new state into our current state
   this.status = { ...this.status, ...newStatusState }
   // Then fire all subscribed functions in our subscriptions array
-  this.subscriptions.forEach(subscription => {
-    subscription(this.status)
-  })
+  // this.subscriptions.forEach(subscription => {
+  //   subscription.setWatcher(this.status)
+  // })
 }
 
 function act() {
@@ -320,16 +336,7 @@ function registerActions() {
 function getRequestPromise(actionName, request) {
   let { method, endpoint, path, req, query } = request || {}
   const { GQL_URL, WSS_URL, endpoints } = this.config || {}
-  console.warn(
-    actionName,
-    endpoint ||
-      (query &&
-        query
-          .replace(/[\n\t]/gm, '')
-          .trim()
-          .substr(0, 50)) ||
-      ''
-  )
+  debug && console.warn(actionName, request)
   req = {
     method: actionName || (req && req.method) || method || 'GET',
     endpoint: (req && req.endpoint) || endpoint,
@@ -367,17 +374,19 @@ function getRequestPromise(actionName, request) {
     Internal useInternalStore hooks to handle component subscriptions
     when it is mounted and unmounted.
  */
-function useInternalStore() {
+function useInternalStore({ name, watch }) {
   // Get setState function from useState
-  const newSubscription = useState()[1]
+  const [, setWatcher] = useState(watch)
   useEffect(() => {
+    debug && console.log('ACTSTORE: hooked to', name || 'unknown');
     // Add setState function to our subscriptions array on component mount
-    this.subscriptions.push(newSubscription)
+    this.subscriptions.push({ watch, setWatcher, name })
     // Remove setState function from subscriptions array on component unmount
     return () => {
-      if (!this.subscriptions) return console.log('useInternalStore', this)
+      if (!this.subscriptions) return console.error('ACTSTORE: missing store subscriptions to unsubscribe')
+      debug && console.log('ACTSTORE: unhooked from', name || 'unknown');
       this.subscriptions = this.subscriptions.filter(
-        subscription => subscription !== newSubscription
+        subscription => subscription.setWatcher !== setWatcher
       )
     }
   }, [])
