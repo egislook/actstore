@@ -49,7 +49,7 @@
   },
   "dependencies": {
     "commander": "^2.20.0",
-    "fetchier": "0.0.23",
+    "fetchier": "0.0.25",
     "js-cookie": "^2.2.0"
   }
 }
