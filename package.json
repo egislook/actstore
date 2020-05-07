@@ -45,11 +45,11 @@
     "babel-preset-stage-0": "^6.24.1",
     "nodemon": "^1.19.1",
     "prettier": "^1.18.2",
-    "react": "../../PORTAL-Web/node_modules/react"
+    "react": "../../@clik/PORTAL-Web/node_modules/react"
   },
   "dependencies": {
     "commander": "^2.20.0",
-    "fetchier": "0.0.28",
+    "fetchier": "0.0.30",
     "js-cookie": "^2.2.0"
   }
 }
