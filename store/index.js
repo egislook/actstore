@@ -64,7 +64,7 @@ function Memo(_ref) {
   var children = _ref.children,
       triggers = _ref.triggers;
 
-  //triggers && Object.values(triggers)) || child.props.triggers ? Object.values(child.props.triggers) : 
+  //triggers && Object.values(triggers)) || child.props.triggers ? Object.values(child.props.triggers) :
   return _react2.default.Children.map(children, function (child) {
     return _react2.default.useMemo(function () {
       return child;
@@ -317,6 +317,8 @@ function getRequestPromise(actionName, request) {
   switch (req.method) {
     case 'POST':
     case 'GET':
+    case 'DELETE':
+    case 'PUT':
       return _fetchier2.default[req.method](_extends({ url: endpoints[endpoint] + req.path, token: token }, req));
     case 'GQL':
       if (!req.upsert && !req.data) return _fetchier2.default[req.method](_extends({ url: GQL_URL, token: token }, req));
@@ -329,8 +331,6 @@ function getRequestPromise(actionName, request) {
       return _fetchier.WS.OPEN(_extends({ url: WSS_URL, token: token }, req, { onError: onError }), null);
     case 'CLOSE':
       return _fetchier.WS.CLOSE(_extends({ url: WSS_URL }, req));
-    case 'PUT':
-      return (0, _fetchier.PUT)(_extends({}, req));
     case 'SUB':
       return _fetchier.WS.SUB({ url: req.url || WSS_URL, subscription: req });
     case 'UNSUB':

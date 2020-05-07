@@ -11,7 +11,7 @@ export const ActStore = props => {
   debug && console.log('ACTSTORE: INIT')
   if(!init)
     init = useStore(props)
-  
+
   const { act } = init()
   useEffect(() => { act('APP_INIT')}, [])
   return null
@@ -23,7 +23,7 @@ export const ActStore = props => {
   EX: useMemoize(Component, props);
  */
 export function Memo({ children, triggers }) {
-  //triggers && Object.values(triggers)) || child.props.triggers ? Object.values(child.props.triggers) : 
+  //triggers && Object.values(triggers)) || child.props.triggers ? Object.values(child.props.triggers) :
   return React.Children.map(children, child => {
     return React.useMemo(() => child, triggers ? Object.values(triggers) : Object.values(child.props))
   })
@@ -37,11 +37,11 @@ export function useMemoize(Component, props, triggers) {
 }
 
 export default function useActStore(args, watch) {
-  
+
   const watcher = { watch, name: args && args.name };
   const store = init(watcher)
   useInternalStore.call(store, watcher)
-  
+
   if (typeof args === 'object') {
     if(!args.actions) return store;
     const actions = args.actions(store)
@@ -49,7 +49,7 @@ export default function useActStore(args, watch) {
     for (let actionName in actions) {
       store.actions[actionName] = actions[actionName].bind(store)
     }
-    
+
     return store
   }
 
@@ -110,15 +110,15 @@ function useStore(args = {}) {
     if (keys.length === 1) return store.store[singleKey]
     return keys.reduce((res, key) => Object.assign(res, { [key]: store.store[key] }), {})
   }
-  
-  
+
+
   function setGlobal(data) {
     data ? store.setState(data) : store.resetState()
     return Promise.resolve(data)
   }
-  
+
   function getRoute(singleKey) {
-    
+
     const path = router && router.asPath && router.asPath.split('?').shift() || ''
     const routeData = {
       asPath: router && router.asPath,
@@ -126,7 +126,7 @@ function useStore(args = {}) {
       query: router && router.query,
       params: path.split('/').filter(val => val.length)
     }
-    
+
     const keys = [...arguments]
     if (!keys.length) return routeData
     if (keys.length === 1) return routeData[singleKey]
@@ -136,11 +136,11 @@ function useStore(args = {}) {
   function setRoute(name, disableRoute) {
     if(typeof name === 'object')
       return new Promise(resolve => resolve(router && router.push(name, name.pathname, { shallow: true })))
-      
+
     const route = init.routes[name] || {
       link: router.query.redirect || name
     }
-    
+
     return new Promise(resolve => {
       if (disableRoute || router && router.asPath === (route.link || name)) return resolve(route)
       return resolve(router && router.push(route.link, route.link, { shallow: true }))
@@ -166,7 +166,7 @@ function resetState(initialState) {
 
 function setState(newState) {
   // Add the new state into our current state
-  
+
   // console.log(equal(newState, this.store), newState)
   debug && console.log('ACTSTORE: set', newState)
   const stateKeys = Object.keys(newState);
@@ -179,10 +179,10 @@ function setState(newState) {
   this.subscriptions.forEach(subscription => {
     if(!subscription.watch)
       return subscription.setWatcher(this.store)
-    
+
     if(!subscription.watch.length)
       return
-      
+
     if(subscription.watch.find(key => stateKeys.includes(key)))
       return subscription.setWatcher(this.store)
   })
@@ -193,24 +193,24 @@ function act() {
   const actionName = args.shift()
   const actions = this.actions
   const handleError = error => {
-    
+
     actions['APP_INFO']
       ? actions['APP_INFO'](error)
       : this && this.handle && this.handle.info(error)
-      
+
     throw error
   }
-  
+
   if (typeof actionName === 'function') return actionName.apply(this, arguments)
   if (typeof actionName === 'string') {
     const isAction = actions[actionName];
     const actFunction = isAction
       ? actions[actionName].bind(this)(...args)
       : getRequestPromise.apply(this, arguments)
-      
+
     if(actFunction instanceof Promise)
       return isAction ? actFunction.catch(handleError) : actFunction
-    else 
+    else
       return Promise.resolve(actFunction)
   }
   if (Array.isArray(actionName))
@@ -229,7 +229,7 @@ function act() {
 function action() {
   const args = [...arguments]
   const actionName = args.shift()
-  
+
   const actions = this.actions
   if (typeof actionName !== 'string' || !actions[actionName])
     return Promise.reject(actionName + ' action can not be found')
@@ -265,11 +265,13 @@ function getRequestPromise(actionName, request) {
   switch (req.method) {
     case 'POST':
     case 'GET':
+    case 'DELETE':
+    case 'PUT':
       return fetchier[req.method]({ url: endpoints[endpoint] + req.path, token, ...req })
     case 'GQL':
       if(!req.upsert && !req.data)
         return fetchier[req.method]({ url: GQL_URL, token, ...req })
-        
+
       const upsertRequest = upsert({ data: req.upsert, ...req })
       if(!upsertRequest) return Promise.resolve('Nothing to change. Data is the same as Prev')
         return fetchier[req.method]({ url: GQL_URL, token, ...req, ...upsertRequest })
@@ -278,8 +280,6 @@ function getRequestPromise(actionName, request) {
       return WS.OPEN({ url: WSS_URL, token, ...req, onError }, null)
     case 'CLOSE':
       return WS.CLOSE({ url: WSS_URL, ...req })
-    case 'PUT':
-      return PUT({ ...req })
     case 'SUB':
       return WS.SUB({ url: req.url || WSS_URL, subscription: req })
     case 'UNSUB':
