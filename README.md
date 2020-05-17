@@ -1,6 +1,6 @@
 # ActStore
 
-Just global store solution using react hooks and fetchier
+Just global store solution using react hooks and fetchier. Works with ReactNative and ReactWeb
 
 ## Install
 
@@ -14,11 +14,19 @@ actstore is using subscription concept to handle global state, each use of useAc
 
 ```javascript
 import React from 'react'
-import useActStore from 'actstore'
+import Actstore from 'actstore'
+import AsyncStorage from '@react-native-community/async-storage' //for react native
+import JSCookies from 'js-cookie' //for react web
+
+const Cookies = JSCookies || {
+	set: AsyncStorage.setItem,
+	get: AsyncStorage.getItem,
+	clear: AsyncStorage.clear
+}
 
 export default () => {
   // Initiates actstore and returns `store` and `act` arguments
-  const { store, act } = useActStore({ actions, configs }, ['ready'])
+  const { store, act } = Actstore({ actions, configs, Cookies }, ['ready'])
   // Trigger init action
   useEffect(() => { act('APP_INIT') }, [])
   // Render Views
