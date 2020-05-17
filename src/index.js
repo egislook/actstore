@@ -1,19 +1,19 @@
 import React, { useEffect, useState } from 'react'
 import fetchier, { GET, POST, PUT, GQL, WS } from 'fetchier'
 import { upsert } from 'fetchier/utils'
-import Cookies from 'js-cookie'
-import equal from '../utils/equal'
 
-let init = null
-let debug = null
+let init
+let debug
+let Cookies = { get: console.log, set: console.log }
 
-export const ActStore = props => {
+export const ActStore = (props = {}) => {
+  debug = props.debug
   debug && console.log('ACTSTORE: INIT')
   if(!init)
     init = useStore(props)
 
-  const { act } = init()
-  useEffect(() => { act('APP_INIT')}, [])
+  const store = init()
+  useEffect(() => { store.act('APP_INIT') }, [])
   return null
 }
 
@@ -38,8 +38,17 @@ export function useMemoize(Component, props, triggers) {
 
 export default function useActStore(args, watch) {
 
-  const watcher = { watch, name: args && args.name };
+  if(args && args.debug)
+    debug = args.debug
+
+  if(!init){
+    Cookies = args.Cookies || Cookies
+    init = useStore(args)
+  }
+
+  const watcher = { watch, name: args && args.name }
   const store = init(watcher)
+
   useInternalStore.call(store, watcher)
 
   if (typeof args === 'object') {
@@ -49,8 +58,6 @@ export default function useActStore(args, watch) {
     for (let actionName in actions) {
       store.actions[actionName] = actions[actionName].bind(store)
     }
-
-    return store
   }
 
   if (typeof args === 'function') {
@@ -64,14 +71,14 @@ export default function useActStore(args, watch) {
     return store
   }
 
-  return init()
+  return store
 }
 
 /*
     This is our useActStore() hooks
  */
 function useStore(args = {}) {
-  const { actions, config, init = {}, initialState, router } = args
+  const { actions, configs, init = {}, initialState, router } = args
   const store = {
     ...args,
     init: {
@@ -79,7 +86,7 @@ function useStore(args = {}) {
       CLIENT: typeof window === 'object'
     },
     cookies: Cookies,
-    config,
+    configs,
     route: {
       get: getRoute,
       set: setRoute,
@@ -96,11 +103,9 @@ function useStore(args = {}) {
   store.resetState = resetState.bind(store, initialState)
   store.setState = setState.bind(store)
   // Generate internal act object of executable actions
-  if (actions) {
-    store.act = act.bind(store)
-    store.action = action.bind(store)
-    registerActions.call(store, actions)
-  }
+  store.act = act.bind(store)
+  store.action = action.bind(store)
+  registerActions.call(store, actions)
   // Return subscribe-able hooks
   return () => store
 
@@ -168,9 +173,15 @@ function setState(newState) {
   // Add the new state into our current state
 
   // console.log(equal(newState, this.store), newState)
+  const stateKeys = Object.keys(newState)
+
+  if(!stateKeys.length)
+    return debug && console.log('ACTSTORE ERROR: set accepts only objects')
+
   debug && console.log('ACTSTORE: set', newState)
-  const stateKeys = Object.keys(newState);
+
   this.store = { ...this.store, ...newState }
+
   // Clears out false values in the store
   for (let key in stateKeys) {
     if (!newState[key]) delete this.store[key]
@@ -240,6 +251,12 @@ function action() {
 
 function registerActions() {
   const fn = arguments[0]
+  this.actions = this.actions || {}
+
+  if(!fn){
+    debug && console.log('ACTSTORE ERROR:', 'No actions been stored')
+    return this
+  }
   const actions = fn(this)
   if (!this.actions) this.actions = {}
   // const firstActionName = Object.keys(actions).shift()
@@ -251,9 +268,9 @@ function registerActions() {
   return this
 }
 
-function getRequestPromise(actionName, request) {
+async function getRequestPromise(actionName, request) {
   let { method, endpoint, path, req, query } = request || {}
-  const { GQL_URL, WSS_URL, endpoints } = this.config || {}
+  const { GQL_URL, WSS_URL, endpoints } = this.configs || {}
   debug && console.warn(actionName, request)
   req = {
     method: actionName || (req && req.method) || method || 'GET',
@@ -261,7 +278,7 @@ function getRequestPromise(actionName, request) {
     path: (req && req.path) || path || '',
     ...(req || request)
   }
-  const token = Cookies.get('token')
+  const token = await Cookies.get('token')
   switch (req.method) {
     case 'POST':
     case 'GET':
@@ -294,14 +311,17 @@ function getRequestPromise(actionName, request) {
  */
 function useInternalStore({ name, watch }) {
   // Get setState function from useState
-  const [, setWatcher] = useState(watch)
+  const [ watchers, setWatcher ] = useState(watch)
   const [ componentId ] = useState(name || Date.now() + Math.random());
+
   useEffect(() => {
     debug && console.log('ACTSTORE: hooked to', componentId);
     // Add setState function to our subscriptions array on component mount
     this.subscriptions.push({ watch, setWatcher, name, componentId })
     // Remove setState function from subscriptions array on component unmount
     return () => {
+      debug && console.log('Actstore', 'unmounting internal store')
+      // return
       if (!this.subscriptions) return console.error('ACTSTORE: missing store subscriptions to unsubscribe')
       debug && console.log('ACTSTORE: unhooked from', name || 'unknown');
       this.subscriptions = this.subscriptions.filter(
