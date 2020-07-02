@@ -90,7 +90,7 @@ function Memo(_ref) {
 
 function useMemoize(Component, props, triggers) {
   return _react["default"].useMemo(function () {
-    return _react["default"].createElement(Component, props);
+    return /*#__PURE__*/_react["default"].createElement(Component, props);
   }, triggers ? Object.values(triggers) : Object.values(props));
 }
 
@@ -144,6 +144,7 @@ function useStore() {
   var args = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
   var actions = args.actions,
       configs = args.configs,
+      config = args.config,
       _args$init = args.init,
       init = _args$init === void 0 ? {} : _args$init,
       initialState = args.initialState,
@@ -154,7 +155,8 @@ function useStore() {
       CLIENT: (typeof window === "undefined" ? "undefined" : _typeof(window)) === 'object'
     }),
     cookies: Cookies,
-    configs: configs,
+    configs: configs || config,
+    config: config,
     route: {
       get: getRoute,
       set: setRoute,

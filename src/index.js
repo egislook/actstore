@@ -78,7 +78,7 @@ export default function useActStore(args, watch) {
     This is our useActStore() hooks
  */
 function useStore(args = {}) {
-  const { actions, configs, init = {}, initialState, router } = args
+  const { actions, configs, config, init = {}, initialState, router } = args
   const store = {
     ...args,
     init: {
@@ -86,7 +86,8 @@ function useStore(args = {}) {
       CLIENT: typeof window === 'object'
     },
     cookies: Cookies,
-    configs,
+    configs: configs || config,
+    config,
     route: {
       get: getRoute,
       set: setRoute,
