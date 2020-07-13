@@ -138,7 +138,7 @@ function useStore(args = {}) {
 
     const keys = [...arguments]
     if (!keys.length) return routeData
-    if (keys.length === 1) return routeData[singleKey]
+    if (keys.length === 1) return routeData[singleKey] || routeData.params && routeData.params.includes(singleKey)
     return keys.reduce((res, key) => Object.assign(res, { [key]: routeData[key] }), {})
   }
 
@@ -146,9 +146,7 @@ function useStore(args = {}) {
     if(typeof name === 'object')
       return new Promise(resolve => resolve(router && router.push(name, name.pathname, { shallow: true })))
 
-    const route = init.routes[name] || {
-      link: router.query.redirect || name
-    }
+    const route = init.routes[name] || { link: router.query.redirect || name }
 
     return new Promise(resolve => {
       if (disableRoute || router && router.asPath === (route.link || name)) return resolve(route)

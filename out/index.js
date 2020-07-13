@@ -218,7 +218,7 @@ function useStore() {
     };
     var keys = Array.prototype.slice.call(arguments);
     if (!keys.length) return routeData;
-    if (keys.length === 1) return routeData[singleKey];
+    if (keys.length === 1) return routeData[singleKey] || routeData.params && routeData.params.includes(singleKey);
     return keys.reduce(function (res, key) {
       return Object.assign(res, _defineProperty({}, key, routeData[key]));
     }, {});
