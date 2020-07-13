@@ -1,6 +1,6 @@
 {
   "name": "actstore",
-  "version": "0.0.33",
+  "version": "0.0.34",
   "description": "Just global store solution using react hooks, context and fetchier",
   "main": "/out/index.js",
   "babel": {
