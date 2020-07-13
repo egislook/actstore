@@ -2,9 +2,7 @@ import React, { useEffect, useState } from 'react'
 import fetchier, { GET, POST, PUT, GQL, WS } from 'fetchier'
 import { upsert } from 'fetchier/utils'
 
-let init
-let debug
-let Cookies = { get: console.log, set: console.log }
+let init, debug, Cookies = { get: console.log, set: console.log }, handlers
 
 export const ActStore = (props = {}) => {
   debug = props.debug
@@ -38,11 +36,11 @@ export function useMemoize(Component, props, triggers) {
 
 export default function useActStore(args, watch) {
 
-  if(args && args.debug)
-    debug = args.debug
+  if(args?.debug) debug = args.debug
 
   if(!init){
-    Cookies = args.Cookies || Cookies
+    Cookies = args?.cookies || args?.Cookies || Cookies
+    handlers = args?.handlers || {}
     init = useStore(args)
   }
 
@@ -78,13 +76,14 @@ export default function useActStore(args, watch) {
     This is our useActStore() hooks
  */
 function useStore(args = {}) {
-  const { actions, configs, config, init = {}, initialState, router } = args
+  const { actions, configs, config, init = {}, initialState, router } = args || {}
   const store = {
     ...args,
     init: {
       ...args.init,
       CLIENT: typeof window === 'object'
     },
+    handlers,
     cookies: Cookies,
     configs: configs || config,
     config,
@@ -107,6 +106,10 @@ function useStore(args = {}) {
   store.act = act.bind(store)
   store.action = action.bind(store)
   registerActions.call(store, actions)
+  store.handle = handlers && Object.keys(handlers).reduce((obj, key) => {
+    obj[key] = typeof handlers[key] === 'string' ? actions[handlers[key]] : handlers[key]
+    return obj
+  }, {})
   // Return subscribe-able hooks
   return () => store
 

@@ -50,12 +50,13 @@ function _defineProperty(obj, key, value) { if (key in obj) { Object.definePrope
 
 function _typeof(obj) { "@babel/helpers - typeof"; if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
 
-var init;
-var debug;
-var Cookies = {
+var init,
+    debug,
+    Cookies = {
   get: console.log,
   set: console.log
-};
+},
+    handlers;
 
 var ActStore = function ActStore() {
   var props = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
@@ -90,15 +91,16 @@ function Memo(_ref) {
 
 function useMemoize(Component, props, triggers) {
   return _react["default"].useMemo(function () {
-    return /*#__PURE__*/_react["default"].createElement(Component, props);
+    return _react["default"].createElement(Component, props);
   }, triggers ? Object.values(triggers) : Object.values(props));
 }
 
 function useActStore(args, watch) {
-  if (args && args.debug) debug = args.debug;
+  if (args === null || args === void 0 ? void 0 : args.debug) debug = args.debug;
 
   if (!init) {
-    Cookies = args.Cookies || Cookies;
+    Cookies = (args === null || args === void 0 ? void 0 : args.cookies) || (args === null || args === void 0 ? void 0 : args.Cookies) || Cookies;
+    handlers = (args === null || args === void 0 ? void 0 : args.handlers) || {};
     init = useStore(args);
   }
 
@@ -142,18 +144,21 @@ function useActStore(args, watch) {
 
 function useStore() {
   var args = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
-  var actions = args.actions,
-      configs = args.configs,
-      config = args.config,
-      _args$init = args.init,
-      init = _args$init === void 0 ? {} : _args$init,
-      initialState = args.initialState,
-      router = args.router;
+
+  var _ref2 = args || {},
+      actions = _ref2.actions,
+      configs = _ref2.configs,
+      config = _ref2.config,
+      _ref2$init = _ref2.init,
+      init = _ref2$init === void 0 ? {} : _ref2$init,
+      initialState = _ref2.initialState,
+      router = _ref2.router;
 
   var store = _objectSpread(_objectSpread({}, args), {}, {
     init: _objectSpread(_objectSpread({}, args.init), {}, {
       CLIENT: (typeof window === "undefined" ? "undefined" : _typeof(window)) === 'object'
     }),
+    handlers: handlers,
     cookies: Cookies,
     configs: configs || config,
     config: config,
@@ -177,7 +182,11 @@ function useStore() {
 
   store.act = act.bind(store);
   store.action = action.bind(store);
-  registerActions.call(store, actions); // Return subscribe-able hooks
+  registerActions.call(store, actions);
+  store.handle = handlers && Object.keys(handlers).reduce(function (obj, key) {
+    obj[key] = typeof handlers[key] === 'string' ? actions[handlers[key]] : handlers[key];
+    return obj;
+  }, {}); // Return subscribe-able hooks
 
   return function () {
     return store;
@@ -343,14 +352,14 @@ function getRequestPromise(_x, _x2) {
 
 function _getRequestPromise() {
   _getRequestPromise = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee(actionName, request) {
-    var _ref3, method, endpoint, path, req, query, _ref4, GQL_URL, WSS_URL, endpoints, token, upsertRequest, onError;
+    var _ref4, method, endpoint, path, req, query, _ref5, GQL_URL, WSS_URL, endpoints, token, upsertRequest, onError;
 
     return regeneratorRuntime.wrap(function _callee$(_context) {
       while (1) {
         switch (_context.prev = _context.next) {
           case 0:
-            _ref3 = request || {}, method = _ref3.method, endpoint = _ref3.endpoint, path = _ref3.path, req = _ref3.req, query = _ref3.query;
-            _ref4 = this.configs || {}, GQL_URL = _ref4.GQL_URL, WSS_URL = _ref4.WSS_URL, endpoints = _ref4.endpoints;
+            _ref4 = request || {}, method = _ref4.method, endpoint = _ref4.endpoint, path = _ref4.path, req = _ref4.req, query = _ref4.query;
+            _ref5 = this.configs || {}, GQL_URL = _ref5.GQL_URL, WSS_URL = _ref5.WSS_URL, endpoints = _ref5.endpoints;
             debug && console.warn(actionName, request);
             req = _objectSpread({
               method: actionName || req && req.method || method || 'GET',
@@ -439,11 +448,11 @@ function _getRequestPromise() {
   return _getRequestPromise.apply(this, arguments);
 }
 
-function useInternalStore(_ref2) {
+function useInternalStore(_ref3) {
   var _this4 = this;
 
-  var name = _ref2.name,
-      watch = _ref2.watch;
+  var name = _ref3.name,
+      watch = _ref3.watch;
 
   // Get setState function from useState
   var _useState = (0, _react.useState)(watch),
