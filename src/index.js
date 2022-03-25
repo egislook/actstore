@@ -7,12 +7,10 @@ let init, debug, Cookies = { get: console.log, set: console.log }, handlers
 export const ActStore = (props = {}) => {
   debug = props.debug
   debug && console.log('ACTSTORE: INIT')
-  if(!init)
-    init = useStore(props)
 
+  if(!init) init = useStore(props)
   const store = init()
-  useEffect(() => { store.act('APP_INIT') }, [])
-  return null
+  return store
 }
 
 /*
